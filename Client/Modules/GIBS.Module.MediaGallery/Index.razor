@@ -5,6 +5,8 @@
 @inherits ModuleBase
 @inject IMediaGalleryCategoryService MediaGalleryCategoryService
 @inject IMediaGalleryItemService MediaGalleryItemService
+@inject ITagsService TagsService
+@inject IItemTagsService ItemTagsService
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<Index> Localizer
 
@@ -51,11 +53,37 @@ else
 {
     <div class="container">
         <div class="row">
-            <div class="col">
-                <div class="text-end"><button class="btn btn-secondary mb-3" @onclick="async () => await ShowAlbums()">Back to Albums</button></div>
+            <div class="col-md-10">
                 <h3>@_selectedCategoryName</h3> 
             </div>
+            <div class="col-md-2 text-end"><button class="btn btn-secondary mb-3" @onclick="async () => await ShowAlbums()">Back to Albums</button></div>
         </div>
+
+        @if (_categoryId != -1 && _tagCounts != null && _tagCounts.Any())
+        {
+            <div class="container mt-1 mb-3 p-3" style="border: 1px solid #ddd; border-radius: 5px;">
+                <div class="row">
+                    <div class="col">
+                        <span class="fw-bold"><i class="oi oi-tag"></i> Filter by Tag:</span>&nbsp;&nbsp;
+                        @foreach (var tag in _tagCounts)
+                        {
+                            var btnClass = (_selectedTag == tag.Key) ? "btn-primary" : "btn-outline-secondary";
+                            <button class="btn btn-sm rounded-pill me-1 mb-1 @btnClass" @onclick="() => FilterByTag(tag.Key)">
+                                @tag.Key (@tag.Value)
+                            </button>
+
+                        }
+                        &nbsp;
+                        @if (!string.IsNullOrEmpty(_selectedTag))
+                        {
+                            <button class="btn btn-sm btn-link text-danger" @onclick="ClearTagFilter">Clear Filter</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+
         <div class="pw-photos-grid" id="photosGrid">
             @if (_items == null)
             {
@@ -68,14 +96,22 @@ else
 
                     <div class="pw-photo-item" @onclick="() => OpenLightbox(item)">
                         <img src="@item.FilePath" alt="@item.Title" class="pw-photo-img" loading="lazy" />
-                        <p class="item-title">@item.Title</p>
+                        <div class="pw-item-overlay">
+                            <div class="pw-item-info">
+                                <h5 class="pw-item-title">@item.Title</h5>
+
+                            </div>
+                        </div>
+                       
                     </div>
+                    
 
                 }
             }
         </div>
     </div>
 }
+
 
 @if (_showLightbox)
 {
@@ -103,6 +139,10 @@ else
 
             <div class="pw-lightbox-info">
                 <h3 class="pw-lightbox-title">@_selectedItem.Title</h3>
+                @if (!string.IsNullOrEmpty(_selectedItem.Tags))
+                {
+                    <div class="pw-lightbox-description">@_selectedItem.Tags</div>
+                }
                 <span class="pw-lightbox-counter">@(_items.IndexOf(_selectedItem) + 1) / @_items.Count</span>
             </div>
         </div>
@@ -115,12 +155,16 @@ else
 
     public override List<Resource> Resources => new List<Resource>()
     {
-        new Resource { ResourceType = ResourceType.Stylesheet, Url = "_content/GIBS.Module.MediaGallery/Module.css?v=1.5" },
+        new Resource { ResourceType = ResourceType.Stylesheet, Url = "_content/GIBS.Module.MediaGallery/Module.css?v=1.8" },
        // new Resource { ResourceType = ResourceType.Script, Url = ModulePath() + "Module.js" }
     };
 
     private List<MediaGalleryAlbum> _albums;
     private List<MediaGalleryItem> _items;
+    private List<MediaGalleryItem> _categoryItems;
+    private List<Models.Tags> _tags;
+    private Dictionary<string, int> _tagCounts;
+    private string _selectedTag;
     private int _categoryId = -1;
     private string _selectedCategoryName;
     private bool _showLightbox = false;
@@ -144,20 +188,85 @@ else
         _albums = await MediaGalleryItemService.GetMediaGalleryAlbumsAsync(ModuleState.ModuleId);
     }
 
+    private async Task LoadTags()
+    {
+        _tags = await TagsService.GetTagsAsync(ModuleState.ModuleId);
+    }
+
     private async Task LoadCategoryItems()
     {
         var allItems = await MediaGalleryItemService.GetMediaGalleryItemsAsync(ModuleState.ModuleId);
-        _items = allItems.Where(i => i.CategoryId == _categoryId).ToList();
-        if (_items.Any())
+        _categoryItems = allItems.Where(i => i.CategoryId == _categoryId).OrderBy(i => i.SortOrder).ToList();
+        if (_categoryItems.Any())
         {
-            _selectedCategoryName = _items.First().CategoryName;
+            _selectedCategoryName = _categoryItems.First().CategoryName;
+            await LoadTags();
+            if (_tags != null)
+            {
+                foreach (var item in _categoryItems)
+                {
+                    var itemTags = await ItemTagsService.GetItemTagsAsync(item.ItemId);
+                    if (itemTags != null && itemTags.Any())
+                    {
+                        var tagNames = new List<string>();
+                        foreach (var itemTag in itemTags)
+                        {
+                            var tag = _tags.FirstOrDefault(t => t.TagId == itemTag.TagId);
+                            if (tag != null)
+                            {
+                                tagNames.Add(tag.TagName);
+                            }
+                        }
+                        item.Tags = string.Join(", ", tagNames);
+                    }
+                }
+            }
+
+            _tagCounts = _categoryItems
+                .Where(i => !string.IsNullOrEmpty(i.Tags))
+                .SelectMany(i => i.Tags.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(t => t.Trim()))
+                .GroupBy(t => t)
+                .OrderBy(g => g.Key)
+                .ToDictionary(g => g.Key, g => g.Count());
         }
         else
         {
             // If category is empty, still try to get its name
             var category = await MediaGalleryCategoryService.GetMediaGalleryCategoryAsync(_categoryId, ModuleState.ModuleId);
             _selectedCategoryName = category?.CategoryName ?? "Album";
+            _categoryItems = new List<MediaGalleryItem>();
+            _tagCounts = new Dictionary<string, int>();
         }
+
+        _items = new List<MediaGalleryItem>(_categoryItems);
+        _selectedTag = null;
+    }
+
+    private void FilterByTag(string tagName)
+    {
+        if (_selectedTag == tagName)
+        {
+            // If the same tag is clicked again, clear the filter
+            ClearTagFilter();
+        }
+        else
+        {
+            _selectedTag = tagName;
+            _items = _categoryItems.Where(i =>
+                !string.IsNullOrEmpty(i.Tags) &&
+                i.Tags.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                      .Select(t => t.Trim())
+                      .Contains(_selectedTag))
+                .ToList();
+        }
+        StateHasChanged();
+    }
+
+    private void ClearTagFilter()
+    {
+        _selectedTag = null;
+        _items = new List<MediaGalleryItem>(_categoryItems);
+        StateHasChanged();
     }
 
     private async Task ViewAlbum(int categoryId)

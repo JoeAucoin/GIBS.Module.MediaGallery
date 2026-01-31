@@ -17,6 +17,14 @@ namespace GIBS.Module.MediaGallery.Startup
             {
                 services.AddScoped<IMediaGalleryItemService, MediaGalleryItemService>();
             }
+            if (!services.Any(s => s.ServiceType == typeof(ITagsService)))
+            {
+                services.AddScoped<ITagsService, TagsService>();
+            }
+            if (!services.Any(s => s.ServiceType == typeof(IItemTagsService)))
+            {
+                services.AddScoped<IItemTagsService, ItemTagsService>();
+            }
         }
     }
 }

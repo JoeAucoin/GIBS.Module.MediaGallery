@@ -8,11 +8,14 @@
 @using System.IO
 @using System.Security.Claims
 @using System.Text.Json
+@using System.Threading.Tasks
 
 @namespace GIBS.Module.MediaGallery
 @inherits ModuleBase
 @inject IMediaGalleryCategoryService MediaGalleryCategoryService
 @inject IMediaGalleryItemService MediaGalleryItemService
+@inject ITagsService TagsService
+@inject IItemTagsService ItemTagsService
 @inject NavigationManager NavigationManager
 @inject ISettingService SettingService
 @inject IFileService FileService
@@ -33,8 +36,8 @@
         <th>Active</th>
     </Header>
     <Row>
-                <td><button class="btn btn-primary" @onclick="() => EditCategory(context)"><i class="oi oi-pencil" style="font-size: 18px;"></i></button></td>
-                <td><button class="btn btn-danger" @onclick="() => DeleteCategory(context)"><i class="oi oi-delete" style="font-size: 18px;"></i></button></td>
+        <td><button class="btn btn-outline-secondary btn-sm" @onclick="() => EditCategory(context)"><i class="oi oi-pencil"></i></button></td>
+        <td><ActionDialog Header="Delete Album" Message="Are You Sure You Wish To Delete This Album?" Action="Delete" IconName="delete" IconOnly Security="SecurityAccessLevel.Edit" Class="btn btn-danger btn-sm" OnClick="@(async () => await DeleteCategory(context))" ResourceKey="Delete" Id="@context.CategoryId.ToString()" /></td>
         <td>@context.CategoryName</td>
         <td>@context.Description</td>
         <td>@context.SortOrder</td>
@@ -105,9 +108,14 @@
     </TabPanel>
     <TabPanel Name="Photos">
         <h3>Manage Photos</h3>
-        <div class="text-end">
-        <button class="btn btn-success mb-2" @onclick="AddItem">Add Photo</button>
-        </div>
+        @if (_activeItem == null)
+        {
+            <div class="text-end"> 
+                <button class="btn btn-success mb-2" @onclick="AddItem">Add Photo</button>
+            </div>
+        }
+
+        
         @if (_activeItem != null)
         {
             <div class="container">
@@ -138,6 +146,14 @@
                         <textarea id="item-description" @bind="_activeItem.Description" class="form-control"></textarea>
                     </div>
                 </div>
+
+                <div class="row mb-1 align-items-center">
+                    <Label Class="col-sm-3" For="item-tags" HelpText="Enter a comma-separated list of tags">Tags: </Label>
+                    <div class="col-sm-9">
+                        <input id="item-tags" @bind="_activeItem.Tags" class="form-control" />
+                    </div>
+                </div>
+
                 <div class="row mb-1 align-items-center">
                     <Label Class="col-sm-3" For="item-mediatype" HelpText="Enter the media type (e.g., image, video)">Media Type: </Label>
                     <div class="col-sm-9">
@@ -240,8 +256,8 @@
                 <th>Active</th>
                 </Header>
                 <Row>
-                    <td><button class="btn btn-primary" @onclick="() => EditItem(context)"><i class="oi oi-pencil" style="font-size: 18px;"></i></button></td>
-                    <td><button class="btn btn-danger" @onclick="() => DeleteItem(context)"><i class="oi oi-delete" style="font-size: 18px;"></i></button></td>
+                    <td><button class="btn btn-outline-secondary btn-sm" @onclick="() => EditItem(context)"><i class="oi oi-pencil"></i></button></td>
+                    <td><ActionDialog Header="Delete Item" Message="Are You Sure You Wish To Delete This Item?" Action="Delete" IconName="delete" IconOnly Security="SecurityAccessLevel.Edit" Class="btn btn-danger btn-sm" OnClick="@(async () => await DeleteItem(context))" ResourceKey="Delete" Id="@context.ItemId.ToString()" /></td>
                     <td class="text-center">
                         @if (!string.IsNullOrEmpty(context.FilePath))
                         {
@@ -275,6 +291,8 @@
 
     private List<Models.MediaGalleryCategory> _categories;
     private List<MediaGalleryItem> _items;
+    private List<Models.Tags> _tags;
+    private List<Models.ItemTags> _itemTags;
     private Models.MediaGalleryCategory _activeCategory;
     private Models.MediaGalleryItem _activeItem;
     private string _activeTab = "Albums";
@@ -319,11 +337,17 @@
 
             await LoadCategories();
             await LoadItems();
+            await LoadTags();
         }
         catch (Exception ex)
         {
             await logger.LogError(ex, "Error Loading Categories {Error}", ex.Message);
         }
+    }
+
+    private async Task LoadTags()
+    {
+        _tags = await TagsService.GetTagsAsync(ModuleState.ModuleId);
     }
 
     private async Task SaveFiltersAsync()
@@ -361,11 +385,12 @@
         StateHasChanged();
     }
 
-    private void ClearFilters()
+    private async Task ClearFilters()
     {
         // Use the properties to ensure filtering is re-applied
         _selectedAlbum = "";
-        ApplyFilters();
+        //ApplyFilters();
+        await LoadItems();
     }
 
     private async void HandleFileUpload(int fileId)
@@ -537,7 +562,24 @@
     private async Task LoadItems()
     {
         _items = await MediaGalleryItemService.GetMediaGalleryItemsAsync(ModuleState.ModuleId);
-
+        await LoadTags();
+        foreach (var item in _items)
+        {
+            var itemTags = await ItemTagsService.GetItemTagsAsync(item.ItemId);
+            if (itemTags != null && itemTags.Any())
+            {
+                var tagNames = new List<string>();
+                foreach (var itemTag in itemTags)
+                {
+                    var tag = _tags.FirstOrDefault(t => t.TagId == itemTag.TagId);
+                    if (tag != null)
+                    {
+                        tagNames.Add(tag.TagName);
+                    }
+                }
+                item.Tags = string.Join(", ", tagNames);
+            }
+        }
     }
 
     private async Task DeleteItem(MediaGalleryItem item)
@@ -583,6 +625,7 @@
             SortOrder = item.SortOrder,
             IsActive = item.IsActive,
             ViewCount = item.ViewCount,
+            Tags = item.Tags,
             CreatedBy = item.CreatedBy,
             CreatedOn = item.CreatedOn,
             ModifiedBy = item.ModifiedBy,
@@ -598,6 +641,7 @@
             {
                 var newItem = await MediaGalleryItemService.AddMediaGalleryItemAsync(_activeItem);
                 await logger.LogInformation("Item Added {Item}", newItem);
+                _activeItem.ItemId = newItem.ItemId;
 
             }
             else
@@ -605,6 +649,9 @@
                 await MediaGalleryItemService.UpdateMediaGalleryItemAsync(_activeItem);
                 await logger.LogInformation("Item Updated {Item}", _activeItem);
             }
+
+            await ProcessTags();
+
             await LoadItems();
             ApplyFilters();
             _activeItem = null;
@@ -613,6 +660,65 @@
         catch (Exception ex)
         {
             await logger.LogError(ex, "Error Saving Item {Error}", ex.Message);
+        }
+    }
+
+    private async Task ProcessTags()
+    {
+        if (_activeItem.Tags != null)
+        {
+            // Get current tags for the item
+            var currentItemTags = await ItemTagsService.GetItemTagsAsync(_activeItem.ItemId);
+            var currentTagNames = new List<string>();
+            if (currentItemTags != null)
+            {
+                await LoadTags();
+                foreach (var itemTag in currentItemTags)
+                {
+                    var tag = _tags.FirstOrDefault(t => t.TagId == itemTag.TagId);
+                    if (tag != null)
+                    {
+                        currentTagNames.Add(tag.TagName);
+                    }
+                }
+            }
+
+            // Get new tags from the input
+            var newTagNames = _activeItem.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(t => t.Trim()).ToList();
+
+            // Identify tags to add
+            var tagsToAdd = newTagNames.Except(currentTagNames).ToList();
+            foreach (var tagName in tagsToAdd)
+            {
+                // Check if tag already exists
+                var existingTag = _tags?.FirstOrDefault(t => t.TagName.Equals(tagName, StringComparison.OrdinalIgnoreCase));
+                if (existingTag == null)
+                {
+                    // Add new tag
+                    var newTag = new Models.Tags { ModuleId = ModuleState.ModuleId, TagName = tagName };
+                    existingTag = await TagsService.AddTagAsync(newTag);
+                    await LoadTags();
+                }
+
+                // Add item-tag relationship
+                var newItemTag = new ItemTags { ItemId = _activeItem.ItemId, TagId = existingTag.TagId };
+                await ItemTagsService.AddItemTagAsync(newItemTag);
+            }
+
+            // Identify tags to remove
+            var tagsToRemove = currentTagNames.Except(newTagNames).ToList();
+            foreach (var tagName in tagsToRemove)
+            {
+                var tag = _tags.FirstOrDefault(t => t.TagName.Equals(tagName, StringComparison.OrdinalIgnoreCase));
+                if (tag != null)
+                {
+                    var itemTagToRemove = currentItemTags.FirstOrDefault(it => it.TagId == tag.TagId);
+                    if (itemTagToRemove != null)
+                    {
+                        await ItemTagsService.DeleteItemTagAsync(itemTagToRemove.ItemTagId);
+                    }
+                }
+            }
         }
     }
 

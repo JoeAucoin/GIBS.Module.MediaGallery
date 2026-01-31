@@ -38,5 +38,7 @@ namespace GIBS.Module.MediaGallery.Models
 
         [NotMapped]
         public string CategoryName { get; set; } // Not mapped, for display only
+        [NotMapped]
+        public string Tags { get; set; }
     }
 }

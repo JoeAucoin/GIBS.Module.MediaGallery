@@ -23,9 +23,13 @@ namespace GIBS.Module.MediaGallery.Startup
         {
             services.AddTransient<IMediaGalleryCategoryService, ServerMediaGalleryCategoryService>();
             services.AddTransient<IMediaGalleryItemService, ServerMediaGalleryItemService>();
+            services.AddTransient<ITagsService, ServerTagsService>();
+            services.AddTransient<IItemTagsService, ServerItemTagsService>();
             services.AddDbContextFactory<MediaGalleryContext>(opt => { }, ServiceLifetime.Transient);
             services.AddTransient<IMediaGalleryCategoryRepository, MediaGalleryCategoryRepository>();
             services.AddTransient<IMediaGalleryItemRepository, MediaGalleryItemRepository>();
+            services.AddTransient<ITagsRepository, TagsRepository>();
+            services.AddTransient<IItemTagsRepository, ItemTagsRepository>();
         }
     }
 }
