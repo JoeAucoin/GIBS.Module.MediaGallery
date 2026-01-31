@@ -24,6 +24,14 @@
     </div>
 </div>
 
+    <div class="row mb-1 align-items-center">
+    <Label Class="col-sm-3" For="showPhotoTitle" HelpText="Select which fields to show on the form" ResourceKey="ShowFields" ResourceType="@resourceType">Show Photo Title: </Label>
+        <div class="col-sm-9">   
+            <input type="checkbox" id="showPhotoTitle" class="form-check-input" @bind="@_showPhotoTitle" />
+        </div>
+    </div>
+
+
 <div class="row mb-1 align-items-center">
     <Label Class="col-sm-3" For="imageThumbWidth" HelpText="The width for Thumbnail image (in pixels)." ResourceKey="ImageMaxWidth">Thumbnail Image Width: </Label>
     <div class="col-sm-9">
@@ -41,11 +49,12 @@
     private string resourceType = "GIBS.Module.MediaGallery.Settings, GIBS.Module.MediaGallery.Client.Oqtane"; // for localization
     public override string Title => "MediaGallery Settings";
 
-    
+
     private List<Folder> _folders = new List<Folder>();
     private string _fileFolderId;
     private string _imageThumbWidth;
     private string _imageThumbHeight;
+    private bool _showPhotoTitle;
 
     protected override async Task OnInitializedAsync()
     {
@@ -58,6 +67,7 @@
             _fileFolderId = SettingService.GetSetting(settings, "FileFolderId", "");
             _imageThumbWidth = SettingService.GetSetting(settings, "ImageThumbWidth", "360");
             _imageThumbHeight = SettingService.GetSetting(settings, "ImageThumbHeight", "360");
+            _showPhotoTitle = bool.Parse(SettingService.GetSetting(settings, "ShowPhotoTitle", "true"));
         }
         catch (Exception ex)
         {
@@ -73,6 +83,7 @@
             settings = SettingService.SetSetting(settings, "ImageThumbWidth", _imageThumbWidth);
             settings = SettingService.SetSetting(settings, "ImageThumbHeight", _imageThumbHeight);
             settings = SettingService.SetSetting(settings, "FileFolderId", _fileFolderId);
+            settings = SettingService.SetSetting(settings, "ShowPhotoTitle", _showPhotoTitle.ToString());
             await SettingService.UpdateModuleSettingsAsync(settings, ModuleState.ModuleId);
         }
         catch (Exception ex)

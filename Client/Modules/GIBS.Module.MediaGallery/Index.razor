@@ -8,6 +8,7 @@
 @inject ITagsService TagsService
 @inject IItemTagsService ItemTagsService
 @inject NavigationManager NavigationManager
+@inject ISettingService SettingService
 @inject IStringLocalizer<Index> Localizer
 
 @if (_categoryId == -1)
@@ -98,7 +99,10 @@ else
                         <img src="@item.FilePath" alt="@item.Title" class="pw-photo-img" loading="lazy" />
                         <div class="pw-item-overlay">
                             <div class="pw-item-info">
-                                <h5 class="pw-item-title">@item.Title</h5>
+                                @if (_showPhotoTitle)
+                                {
+                                    <h5 class="pw-item-title">@item.Title</h5>
+                                }
 
                             </div>
                         </div>
@@ -169,11 +173,14 @@ else
     private string _selectedCategoryName;
     private bool _showLightbox = false;
     private MediaGalleryItem _selectedItem;
+    private bool _showPhotoTitle;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            var settings = await SettingService.GetModuleSettingsAsync(ModuleState.ModuleId);
+            _showPhotoTitle = bool.Parse(SettingService.GetSetting(settings, "ShowPhotoTitle", "true"));
             await LoadAlbums();
         }
         catch (Exception ex)
