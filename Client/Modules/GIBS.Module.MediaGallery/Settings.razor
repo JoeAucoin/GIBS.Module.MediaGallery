@@ -1,0 +1,83 @@
+@using Oqtane.Shared
+@using Oqtane.Services
+@using Oqtane.Models
+@using Oqtane.Modules
+@using Oqtane.Providers
+@using Oqtane.Interfaces
+
+@namespace GIBS.Module.MediaGallery
+@inherits ModuleBase
+@inject ISettingService SettingService
+@inject IStringLocalizer<Settings> Localizer
+@inject IFolderService FolderService
+
+
+<div class="row mb-1 align-items-center">
+    <Label Class="col-sm-3" For="folderList" HelpText="Select the file folder" ResourceKey="FileFolder" ResourceType="@resourceType">Image Folder: </Label>
+    <div class="col-sm-9">
+        <select id="folderList" class="form-select" @bind="@_fileFolderId">
+            @foreach (Folder folder in _folders)
+            {
+                <option value="@(folder.FolderId)">@(new string('-', folder.Level * 2))@(folder.Name)</option>
+            }
+        </select>
+    </div>
+</div>
+
+<div class="row mb-1 align-items-center">
+    <Label Class="col-sm-3" For="imageThumbWidth" HelpText="The width for Thumbnail image (in pixels)." ResourceKey="ImageMaxWidth">Thumbnail Image Width: </Label>
+    <div class="col-sm-9">
+        <input id="imageThumbWidth" type="number" class="form-control" @bind="@_imageThumbWidth" />
+    </div>
+</div>
+<div class="row mb-1 align-items-center">
+    <Label Class="col-sm-3" For="imageThumbHeight" HelpText="The Thumbnail height for uploaded images (in pixels). " ResourceKey="ImageMaxHeight">Thumbnail Image Height: </Label>
+    <div class="col-sm-9">
+        <input id="imageThumbHeight" type="number" class="form-control" @bind="@_imageThumbHeight" />
+    </div>
+</div>
+
+@code {
+    private string resourceType = "GIBS.Module.MediaGallery.Settings, GIBS.Module.MediaGallery.Client.Oqtane"; // for localization
+    public override string Title => "MediaGallery Settings";
+
+    
+    private List<Folder> _folders = new List<Folder>();
+    private string _fileFolderId;
+    private string _imageThumbWidth;
+    private string _imageThumbHeight;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _folders = await FolderService.GetFoldersAsync(PageState.Site.SiteId);
+
+            Dictionary<string, string> settings = await SettingService.GetModuleSettingsAsync(ModuleState.ModuleId);
+            
+            _fileFolderId = SettingService.GetSetting(settings, "FileFolderId", "");
+            _imageThumbWidth = SettingService.GetSetting(settings, "ImageThumbWidth", "360");
+            _imageThumbHeight = SettingService.GetSetting(settings, "ImageThumbHeight", "360");
+        }
+        catch (Exception ex)
+        {
+            AddModuleMessage(ex.Message, MessageType.Error);
+        }
+    }
+
+    public async Task UpdateSettings()
+    {
+        try
+        {
+            var settings = await SettingService.GetModuleSettingsAsync(ModuleState.ModuleId);
+            settings = SettingService.SetSetting(settings, "ImageThumbWidth", _imageThumbWidth);
+            settings = SettingService.SetSetting(settings, "ImageThumbHeight", _imageThumbHeight);
+            settings = SettingService.SetSetting(settings, "FileFolderId", _fileFolderId);
+            await SettingService.UpdateModuleSettingsAsync(settings, ModuleState.ModuleId);
+        }
+        catch (Exception ex)
+        {
+            AddModuleMessage(ex.Message, MessageType.Error);
+        }
+    }
+}

@@ -1,0 +1,79 @@
+@using Oqtane.Modules.Controls
+@using GIBS.Module.MediaGallery.Services
+@using GIBS.Module.MediaGallery.Models
+
+@namespace GIBS.Module.MediaGallery
+@inherits ModuleBase
+@inject IMediaGalleryItemService MediaGalleryItemService
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<ManageItems> Localizer
+
+<h3>Manage Media Items</h3>
+
+@if (_items == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <Pager Items="@_items">
+        <Header>
+            <th style="width: 1px;">&nbsp;</th>
+            <th style="width: 1px;">&nbsp;</th>
+            <th>Title</th>
+            <th>Media Type</th>
+            <th>Sort Order</th>
+            <th>Active</th>
+        </Header>
+        <Row>
+            <td><button class="btn btn-primary">Edit</button></td>
+            <td><button class="btn btn-danger" @onclick="() => DeleteItem(context)">Delete</button></td>
+            <td>@context.Title</td>
+            <td>@context.MediaType</td>
+            <td>@context.SortOrder</td>
+            <td>@context.IsActive</td>
+        </Row>
+    </Pager>
+    <br />
+    <button class="btn btn-success">Add Item</button>
+}
+
+
+@code {
+    public override SecurityAccessLevel SecurityAccessLevel => SecurityAccessLevel.Edit;
+    public override bool UseAdminContainer => false;
+
+    private List<MediaGalleryItem> _items;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadItems();
+        }
+        catch (Exception ex)
+        {
+            await logger.LogError(ex, "Error Loading Items {Error}", ex.Message);
+        }
+    }
+
+    private async Task LoadItems()
+    {
+        _items = await MediaGalleryItemService.GetMediaGalleryItemsAsync(ModuleState.ModuleId);
+    }
+
+    private async Task DeleteItem(MediaGalleryItem item)
+    {
+        try
+        {
+            await MediaGalleryItemService.DeleteMediaGalleryItemAsync(item.ItemId, item.ModuleId);
+            await logger.LogInformation("Item Deleted {Item}", item);
+            await LoadItems();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await logger.LogError(ex, "Error Deleting Item {Error}", ex.Message);
+        }
+    }
+}

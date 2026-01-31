@@ -1,0 +1,210 @@
+@using GIBS.Module.MediaGallery.Services
+@using GIBS.Module.MediaGallery.Models
+
+@namespace GIBS.Module.MediaGallery
+@inherits ModuleBase
+@inject IMediaGalleryCategoryService MediaGalleryCategoryService
+@inject IMediaGalleryItemService MediaGalleryItemService
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<Index> Localizer
+
+@if (_categoryId == -1)
+{
+    @if (_albums == null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <div class="text-end">
+            <ActionLink Action="ManageGallery" Security="SecurityAccessLevel.Edit" Text="Manage Gallery" ResourceKey="ManageGallery" />
+        </div>
+        <br />
+        <br />
+        @if (_albums.Count != 0)
+        {
+           <div class="piwigo-gallery" id="piwigoGallery">
+            <div class="pw-albums-grid">
+                @foreach (var album in _albums)
+                {
+                    <div class="pw-album-card" @onclick="async () => await ViewAlbum(album.CategoryId)">
+                        <div class="pw-album-thumb">
+                            <img class="pw-album-img" src="@album.ThumbnailPath" alt="@album.CategoryName" />
+                            <div class="pw-album-overlay"></div>
+                        </div>
+                        <div class="pw-album-info">
+                            <h3 class="pw-album-title">@album.CategoryName</h3>
+                            <span class="pw-album-count">@album.ItemCount photos</span>
+                        </div>
+                    </div>
+                }
+            </div>
+            </div>
+        }
+        else
+        {
+            <p>@Localizer["Message.DisplayNone"]</p>
+        }
+    }
+}
+else
+{
+    <div class="container">
+        <div class="row">
+            <div class="col">
+                <div class="text-end"><button class="btn btn-secondary mb-3" @onclick="async () => await ShowAlbums()">Back to Albums</button></div>
+                <h3>@_selectedCategoryName</h3> 
+            </div>
+        </div>
+        <div class="pw-photos-grid" id="photosGrid">
+            @if (_items == null)
+            {
+                <p><em>Loading items...</em></p>
+            }
+            else
+            {
+                @foreach (var item in _items)
+                {
+
+                    <div class="pw-photo-item" @onclick="() => OpenLightbox(item)">
+                        <img src="@item.FilePath" alt="@item.Title" class="pw-photo-img" loading="lazy" />
+                        <p class="item-title">@item.Title</p>
+                    </div>
+
+                }
+            }
+        </div>
+    </div>
+}
+
+@if (_showLightbox)
+{
+    <div class="pw-lightbox-overlay" @onclick="CloseLightbox">
+        <div class="pw-lightbox-container">
+            <button class="pw-lightbox-close" @onclick="CloseLightbox" @onclick:stopPropagation="true">&times;</button>
+
+            @if (_items.IndexOf(_selectedItem) > 0)
+            {
+                <div class="pw-lightbox-nav pw-lightbox-nav-prev" @onclick="ShowPrevious" @onclick:stopPropagation="true">
+                    <button class="pw-lightbox-prev"><i class="oi oi-arrow-circle-left" style="font-size: 24px;"></i></button>
+                </div>
+            }
+
+            <div class="pw-lightbox-content" @onclick:stopPropagation="true">
+                <img src="@_selectedItem.FilePath" alt="@_selectedItem.Title" />
+            </div>
+
+            @if (_items.IndexOf(_selectedItem) < _items.Count - 1)
+            {
+                <div class="pw-lightbox-nav pw-lightbox-nav-next" @onclick="ShowNext" @onclick:stopPropagation="true">
+                    <button class="pw-lightbox-next"><i class="oi oi-arrow-circle-right" style="font-size: 24px;"></i></button>
+                </div>
+            }
+
+            <div class="pw-lightbox-info">
+                <h3 class="pw-lightbox-title">@_selectedItem.Title</h3>
+                <span class="pw-lightbox-counter">@(_items.IndexOf(_selectedItem) + 1) / @_items.Count</span>
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+    public override string RenderMode => RenderModes.Interactive;
+
+    public override List<Resource> Resources => new List<Resource>()
+    {
+        new Resource { ResourceType = ResourceType.Stylesheet, Url = "_content/GIBS.Module.MediaGallery/Module.css?v=1.5" },
+       // new Resource { ResourceType = ResourceType.Script, Url = ModulePath() + "Module.js" }
+    };
+
+    private List<MediaGalleryAlbum> _albums;
+    private List<MediaGalleryItem> _items;
+    private int _categoryId = -1;
+    private string _selectedCategoryName;
+    private bool _showLightbox = false;
+    private MediaGalleryItem _selectedItem;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadAlbums();
+        }
+        catch (Exception ex)
+        {
+            await logger.LogError(ex, "Error Loading Gallery {Error}", ex.Message);
+            AddModuleMessage(Localizer["Message.LoadError"], MessageType.Error);
+        }
+    }
+
+    private async Task LoadAlbums()
+    {
+        _albums = await MediaGalleryItemService.GetMediaGalleryAlbumsAsync(ModuleState.ModuleId);
+    }
+
+    private async Task LoadCategoryItems()
+    {
+        var allItems = await MediaGalleryItemService.GetMediaGalleryItemsAsync(ModuleState.ModuleId);
+        _items = allItems.Where(i => i.CategoryId == _categoryId).ToList();
+        if (_items.Any())
+        {
+            _selectedCategoryName = _items.First().CategoryName;
+        }
+        else
+        {
+            // If category is empty, still try to get its name
+            var category = await MediaGalleryCategoryService.GetMediaGalleryCategoryAsync(_categoryId, ModuleState.ModuleId);
+            _selectedCategoryName = category?.CategoryName ?? "Album";
+        }
+    }
+
+    private async Task ViewAlbum(int categoryId)
+    {
+        _categoryId = categoryId;
+        await LoadCategoryItems();
+        StateHasChanged();
+    }
+
+    private async Task ShowAlbums()
+    {
+        _categoryId = -1;
+        _items = null;
+        StateHasChanged();
+    }
+
+    private void OpenLightbox(MediaGalleryItem item)
+    {
+        _selectedItem = item;
+        _showLightbox = true;
+        StateHasChanged();
+    }
+
+    private void CloseLightbox()
+    {
+        _showLightbox = false;
+        _selectedItem = null;
+        StateHasChanged();
+    }
+
+    private void ShowNext()
+    {
+        int currentIndex = _items.FindIndex(i => i.ItemId == _selectedItem.ItemId);
+        if (currentIndex < _items.Count - 1)
+        {
+            _selectedItem = _items[currentIndex + 1];
+            StateHasChanged();
+        }
+    }
+
+    private void ShowPrevious()
+    {
+        int currentIndex = _items.FindIndex(i => i.ItemId == _selectedItem.ItemId);
+        if (currentIndex > 0)
+        {
+            _selectedItem = _items[currentIndex - 1];
+            StateHasChanged();
+        }
+    }
+}

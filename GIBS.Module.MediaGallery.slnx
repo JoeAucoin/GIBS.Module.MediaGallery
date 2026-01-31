@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/docs/" />
+  <Folder Name="/Solution Items/" />
+  <Project Path="..\oqtane.framework\Oqtane.Server\Oqtane.Server.csproj" />
+  <Project Path="Client\GIBS.Module.MediaGallery.Client.csproj" />
+  <Project Path="Package\GIBS.Module.MediaGallery.Package.csproj" />
+  <Project Path="Server\GIBS.Module.MediaGallery.Server.csproj" />
+  <Project Path="Shared\GIBS.Module.MediaGallery.Shared.csproj" />
+</Solution>

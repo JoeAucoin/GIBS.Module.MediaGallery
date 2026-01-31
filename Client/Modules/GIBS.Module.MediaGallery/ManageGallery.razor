@@ -1,0 +1,629 @@
+﻿@using Microsoft.AspNetCore.Components.Forms
+@using Oqtane.Modules.Controls
+@using Oqtane.Services
+@using Oqtane.Models
+@using Oqtane.Security
+@using GIBS.Module.MediaGallery.Services
+@using GIBS.Module.MediaGallery.Models
+@using System.IO
+@using System.Security.Claims
+@using System.Text.Json
+
+@namespace GIBS.Module.MediaGallery
+@inherits ModuleBase
+@inject IMediaGalleryCategoryService MediaGalleryCategoryService
+@inject IMediaGalleryItemService MediaGalleryItemService
+@inject NavigationManager NavigationManager
+@inject ISettingService SettingService
+@inject IFileService FileService
+@inject IStringLocalizer<ManageGallery> Localizer
+@inject IJSRuntime JS
+
+
+<TabStrip ActiveTab="@_activeTab">
+    <TabPanel Name="Albums" Heading="Albums">
+
+<Pager Items="@_categories">
+    <Header>
+        <th style="width: 1px;">&nbsp;</th>
+        <th style="width: 1px;">&nbsp;</th>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Sort Order</th>
+        <th>Active</th>
+    </Header>
+    <Row>
+                <td><button class="btn btn-primary" @onclick="() => EditCategory(context)"><i class="oi oi-pencil" style="font-size: 18px;"></i></button></td>
+                <td><button class="btn btn-danger" @onclick="() => DeleteCategory(context)"><i class="oi oi-delete" style="font-size: 18px;"></i></button></td>
+        <td>@context.CategoryName</td>
+        <td>@context.Description</td>
+        <td>@context.SortOrder</td>
+        <td>@context.IsActive</td>
+    </Row>
+</Pager>
+<br />
+<button class="btn btn-success" @onclick="AddCategory">Add Album</button>
+
+@if (_activeCategory != null)
+{
+    <div class="container">
+        <div class="row mb-1 align-items-center">
+            <Label Class="col-sm-3" For="name" HelpText="Enter the category name" ResourceKey="CategoryName">Name: </Label>
+            <div class="col-sm-9">
+                <input id="name" @bind="_activeCategory.CategoryName" class="form-control" />
+            </div>
+        </div>
+        <div class="row mb-1 align-items-center">
+            <Label Class="col-sm-3" For="description" HelpText="Enter a description for the category" ResourceKey="Description">Description: </Label>
+            <div class="col-sm-9">
+                <textarea id="description" @bind="_activeCategory.Description" class="form-control"></textarea>
+            </div>
+        </div>
+        <div class="row mb-1 align-items-center">
+            <Label Class="col-sm-3" For="sortorder" HelpText="Enter a sort order for the category" ResourceKey="SortOrder">Sort Order: </Label>
+            <div class="col-sm-9">
+                <input id="sortorder" type="number" @bind="_activeCategory.SortOrder" class="form-control" />
+            </div>
+        </div>
+        <div class="row mb-1 align-items-center">
+            <Label Class="col-sm-3" For="isactive" HelpText="Is this category active?" ResourceKey="IsActive">Is Active: </Label>
+            <div class="col-sm-9">
+                <input id="isactive" type="checkbox" @bind="_activeCategory.IsActive" class="form-check-input" />
+            </div>
+        </div>
+        <div class="row mb-1 align-items-center">
+            <Label Class="col-sm-3" For="viewroles" HelpText="Comma separated list of roles that can view this category" ResourceKey="ViewRoles">View Roles: </Label>
+            <div class="col-sm-9">
+                <input id="viewroles" @bind="_activeCategory.ViewRoles" class="form-control" />
+            </div>
+        </div>
+        <div class="row mb-1 align-items-center">
+            <Label Class="col-sm-3" For="parent" HelpText="Select a parent category" ResourceKey="ParentCategoryId">Parent Category: </Label>
+            <div class="col-sm-9">
+                <select id="parent" @bind="_activeCategory.ParentCategoryId" class="form-control">
+                    <option value="">- None -</option>
+                    @if (_categories != null)
+                    {
+                        @foreach (var category in _categories.Where(c => c.CategoryId != _activeCategory.CategoryId))
+                        {
+                            <option value="@category.CategoryId">@category.CategoryName</option>
+                        }
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+    @if (_activeCategory.CategoryId != 0)
+    {
+        <br />
+        <AuditInfo CreatedBy="@_activeCategory.CreatedBy" CreatedOn="@_activeCategory.CreatedOn" ModifiedBy="@_activeCategory.ModifiedBy" ModifiedOn="@_activeCategory.ModifiedOn"></AuditInfo>
+    }
+    <button class="btn btn-success" @onclick="SaveCategory">Save</button>
+    <button class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+}
+
+    </TabPanel>
+    <TabPanel Name="Photos">
+        <h3>Manage Photos</h3>
+        <div class="text-end">
+        <button class="btn btn-success mb-2" @onclick="AddItem">Add Photo</button>
+        </div>
+        @if (_activeItem != null)
+        {
+            <div class="container">
+                <div class="row mb-1 align-items-center">
+                    <Label Class="col-sm-3" For="item-category" HelpText="Select a category for the item">Category: </Label>
+                    <div class="col-sm-9">
+                        <select id="item-category" @bind="_activeItem.CategoryId" class="form-control">
+                            <option value="">- None -</option>
+                            @if (_categories != null)
+                            {
+                                @foreach (var category in _categories)
+                                {
+                                    <option value="@category.CategoryId">@category.CategoryName</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="row mb-1 align-items-center">
+                    <Label Class="col-sm-3" For="item-title" HelpText="Enter the item title">Title: </Label>
+                    <div class="col-sm-9">
+                        <input id="item-title" @bind="_activeItem.Title" class="form-control" />
+                    </div>
+                </div>
+                <div class="row mb-1 align-items-center">
+                    <Label Class="col-sm-3" For="item-description" HelpText="Enter a description for the item">Description: </Label>
+                    <div class="col-sm-9">
+                        <textarea id="item-description" @bind="_activeItem.Description" class="form-control"></textarea>
+                    </div>
+                </div>
+                <div class="row mb-1 align-items-center">
+                    <Label Class="col-sm-3" For="item-mediatype" HelpText="Enter the media type (e.g., image, video)">Media Type: </Label>
+                    <div class="col-sm-9">
+                        <input id="item-mediatype" @bind="_activeItem.MediaType" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <Label Class="col-sm-3" For="upload">File:</Label>
+                    <div class="col-sm-9">
+                        <FileManager UploadMultiple="false" Filter="jpg,png,gif,jpeg,pdf"
+                                     FolderId="@_folderId"
+                                     ShowSuccess="true" ShowFolders="false" ShowFiles="false" ShowImage="false"
+                                     OnUpload="@HandleFileUpload" />
+                    </div>
+                </div>
+
+                <div class="row mb-1 align-items-center">
+                    <Label Class="col-sm-3" For="item-filepath" HelpText="Enter the relative path to the file">File Path: </Label>
+                    <div class="col-sm-9">
+                        <input id="item-filepath" @bind="_activeItem.FilePath" class="form-control" />
+                        @if (!string.IsNullOrEmpty(_activeItem.FilePath))
+                        {
+                            <img src="@_activeItem.FilePath" alt="Image preview" style="max-width: 280px; max-height: 200px; margin-top: 5px; margin-bottom: 10px;" />
+                        }
+                    </div>
+                </div>
+                <div class="row mb-1 align-items-center">
+                    <Label Class="col-sm-3" For="item-thumbnail" HelpText="Enter the relative path to the thumbnail (optional)">Thumbnail Path: </Label>
+                    <div class="col-sm-9">
+                        <input id="item-thumbnail" @bind="_activeItem.ThumbnailPath" class="form-control" />
+                    </div>
+                </div>
+                <div class="row mb-1 align-items-center">
+                    <Label Class="col-sm-3" For="item-sortorder" HelpText="Enter a sort order for the item">Sort Order: </Label>
+                    <div class="col-sm-9">
+                        <input id="item-sortorder" type="number" @bind="_activeItem.SortOrder" class="form-control" />
+                    </div>
+                </div>
+                <div class="row mb-1 align-items-center">
+                    <Label Class="col-sm-3" For="item-isactive" HelpText="Is this item active?">Is Active: </Label>
+                    <div class="col-sm-9">
+                        <input id="item-isactive" type="checkbox" @bind="_activeItem.IsActive" class="form-check-input" />
+                    </div>
+                </div>
+            </div>
+            @if (_activeItem.ItemId != 0)
+            {
+                <br />
+                <AuditInfo CreatedBy="@_activeItem.CreatedBy" CreatedOn="@_activeItem.CreatedOn" ModifiedBy="@_activeItem.ModifiedBy" ModifiedOn="@_activeItem.ModifiedOn"></AuditInfo>
+            }
+            <button class="btn btn-success" @onclick="SaveItem">Save Photo</button>
+            <button class="btn btn-secondary" @onclick="CancelItem">Cancel</button>
+            <hr />
+        }
+
+
+
+        @if (_items == null)
+        {
+            <p><em>Loading...</em></p>
+        }
+        else
+        {
+            <div class="row mb-3">
+                <div class="col-md-2 offset-md-3">
+                    
+                    <select id="statusFilter" class="form-select" @bind="SelectedAlbum">
+                        <option value="">All Albums</option>
+                        @if (_categories != null)
+                        {
+                            @foreach (var CategoryName in _categories)
+                            {
+                                <option value="@CategoryName.CategoryName">@CategoryName.CategoryName</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                <div class="col-md-3 align-self-end">
+                    <button class="btn btn-secondary" @onclick="ClearFilters">Clear Filter</button>
+                    @if (FiltersActive)
+                    {
+                        <span class="badge bg-warning text-dark ms-2">Filter Applied</span>
+                    }
+                </div>
+
+            </div>
+            <hr />
+
+            <Pager Items="@_items.OrderBy(i => i.CategoryName).ThenBy(i => i.SortOrder)">
+                <Header>
+                <th style="width: 1px;">&nbsp;</th>
+                <th style="width: 1px;">&nbsp;</th>
+                <th style="width: 1px;">Photo</th>
+                <th>Title</th>
+                <th>Media Type</th>
+                <th>Category</th>
+                <th>Sort Order</th>
+                <th>Active</th>
+                </Header>
+                <Row>
+                    <td><button class="btn btn-primary" @onclick="() => EditItem(context)"><i class="oi oi-pencil" style="font-size: 18px;"></i></button></td>
+                    <td><button class="btn btn-danger" @onclick="() => DeleteItem(context)"><i class="oi oi-delete" style="font-size: 18px;"></i></button></td>
+                    <td class="text-center">
+                        @if (!string.IsNullOrEmpty(context.FilePath))
+                        {
+                            <img src="@context.FilePath" alt="@context.Title" class="img-thumbnail" />   
+                        }
+                    </td>
+                    <td>@context.Title</td>
+                    <td>@context.MediaType</td>
+                    <td>@context.CategoryName</td>
+                    <td>@context.SortOrder</td>
+                    <td>@context.IsActive</td>
+                </Row>
+            </Pager>
+           
+        }
+    </TabPanel>
+    <TabPanel Name="BulkUpload" Heading="Bulk Upload">
+
+    </TabPanel>
+
+</TabStrip>
+
+
+@code {
+
+    //style="max-width: 230px; max-height: 230px; margin-top: 5px; margin-bottom: 10px;"
+
+
+    public override SecurityAccessLevel SecurityAccessLevel => SecurityAccessLevel.Edit;
+    public override bool UseAdminContainer => false;
+
+    private List<Models.MediaGalleryCategory> _categories;
+    private List<MediaGalleryItem> _items;
+    private Models.MediaGalleryCategory _activeCategory;
+    private Models.MediaGalleryItem _activeItem;
+    private string _activeTab = "Albums";
+    private int _folderId = 1;
+    private string _selectedAlbum = "";
+    private int _imageThumbWidth;
+    private int _imageThumbHeight;
+
+    private class FilterState
+    {
+        public string SelectedAlbum { get; set; }
+    }
+    // Filter Persistence
+    private string _storageKey => $"GIBS_MediaGallery_ManageGallery_{ModuleState.ModuleId}_FilterState";
+    private bool FiltersActive =>
+        !string.IsNullOrEmpty(_selectedAlbum);
+
+    private string SelectedAlbum
+    {
+        get => _selectedAlbum;
+        set
+        {
+            _selectedAlbum = value;
+            ApplyFilters();
+        }
+    }
+
+    public override List<Resource> Resources => new List<Resource>()
+    {
+        new Resource { ResourceType = ResourceType.Stylesheet, Url = ModulePath() + "Module.css?v=1.2" },
+       // new Resource { ResourceType = ResourceType.Script, Url = ModulePath() + "Module.js" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var settings = await SettingService.GetModuleSettingsAsync(ModuleState.ModuleId);
+            _folderId = int.Parse(SettingService.GetSetting(settings, "FileFolderId", "1"));
+            _imageThumbWidth = int.Parse(SettingService.GetSetting(settings, "ImageThumbWidth", "360"));
+            _imageThumbHeight = int.Parse(SettingService.GetSetting(settings, "ImageThumbHeight", "360"));
+
+            await LoadCategories();
+            await LoadItems();
+        }
+        catch (Exception ex)
+        {
+            await logger.LogError(ex, "Error Loading Categories {Error}", ex.Message);
+        }
+    }
+
+    private async Task SaveFiltersAsync()
+    {
+        try
+        {
+            var filterState = new FilterState
+            {
+                SelectedAlbum = SelectedAlbum
+            };
+
+            var json = JsonSerializer.Serialize(filterState);
+            await JS.InvokeVoidAsync("localStorage.setItem", _storageKey, json);
+        }
+        catch (Exception ex)
+        {
+            await logger.LogError(ex, "Error Saving Filter State");
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        IEnumerable<Models.MediaGalleryItem> query = _items;
+
+        if (!string.IsNullOrEmpty(_selectedAlbum))
+        {
+            query = query.Where(r => r.CategoryName == _selectedAlbum);
+        }
+
+        _items = query.ToList();
+
+        // Save state to local storage (fire and forget)
+        _ = SaveFiltersAsync();
+
+        StateHasChanged();
+    }
+
+    private void ClearFilters()
+    {
+        // Use the properties to ensure filtering is re-applied
+        _selectedAlbum = "";
+        ApplyFilters();
+    }
+
+    private async void HandleFileUpload(int fileId)
+    {
+
+        var uploadedFile = await FileService.GetFileAsync(fileId);
+        if (uploadedFile != null)
+        {
+
+            //_newFileToRequest.DesignRequestId = _designRequest.DesignRequestId;
+            _activeItem.FileId = uploadedFile.FileId;
+            _activeItem.FilePath = uploadedFile.Url;
+
+            try
+            {
+                string newFileName = $"{uploadedFile.FileId}_{uploadedFile.Name}";
+                newFileName = newFileName.Replace(" ", "_"); // Replace spaces with underscores
+                // Remove any non-alphanumeric characters except for underscore, hyphen, and dot
+                newFileName = System.Text.RegularExpressions.Regex.Replace(newFileName, @"[^a-zA-Z0-9_\-\.]", "");
+
+                var renamedFile = await RenameFile(fileId, newFileName);
+                if (renamedFile == null)
+                {
+                    //    AddModuleMessage("Could not rename the uploaded file.", MessageType.Error);
+                    return;
+                }
+
+                // Use the custom friendly name if provided, otherwise use the new (renamed) file name
+                _activeItem.FileId = renamedFile.FileId;
+                _activeItem.FilePath = renamedFile.Url;
+                if (string.IsNullOrWhiteSpace(_activeItem.Title))
+                {
+                    var title = Path.GetFileNameWithoutExtension(renamedFile.Name);
+                    title = System.Text.RegularExpressions.Regex.Replace(title, @"^[0-9]+_", "").Trim();
+                    _activeItem.Title = title.Replace("_", " ");
+                }
+                var imageType = Path.GetExtension(renamedFile.Name);
+                imageType = imageType.StartsWith(".") ? imageType[1..] : imageType; // Remove leading dot
+                _activeItem.MediaType = imageType.ToUpper();
+
+                // var newFileToRequest = await DesignRequestService.AddFileToRequestAsync(_newFileToRequest);
+                // if (_notifyProjectManagerOnUpload)
+                // {
+                //     await SendFileNotificationToProjectManagerAsync(newFileToRequest);
+                // }
+
+                // _newFileToRequest = new(); // Reset form
+                // await LoadFileData();
+                var myThumbnail = await MediaGalleryItemService.CreateImageThumbnailAsync(_activeItem.FileId, _imageThumbWidth, _imageThumbHeight, ModuleState.ModuleId);
+                _activeItem.ThumbnailPath = myThumbnail?.Url;
+                _activeItem.ThumbnailFileId = myThumbnail?.FileId ?? 0;
+                AddModuleMessage("File added successfully.", MessageType.Success);
+
+                //  await Save(); // Save to update ModifiedOn and ModifiedBy
+
+                // Switch to Files tab after insert/update
+                _activeTab = "Photos";
+            }
+            catch (Exception ex)
+            {
+                await logger.LogError(ex, "Error saving file information: {Error}", ex.Message);
+                AddModuleMessage("There was an error saving the file information.", MessageType.Error);
+            }
+        }
+        else
+        {
+            AddModuleMessage("Could not retrieve file details after upload.", MessageType.Error);
+        }
+        StateHasChanged();
+    }
+
+    public async Task<Oqtane.Models.File> RenameFile(int fileId, string newFileName)
+    {
+        try
+        {
+            // Retrieve the existing file from the database
+            var uploadedFile = await FileService.GetFileAsync(fileId);
+
+            if (uploadedFile != null)
+            {
+                // Update the file name
+                uploadedFile.Name = newFileName;
+                // Save the changes back to the database and potentially trigger physical file renaming
+                return await FileService.UpdateFileAsync(uploadedFile);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Handle exceptions (e.g., file not found, permission issues)
+            await logger.LogError(ex, "Error renaming file {FileId}: {Error}", fileId, ex.Message);
+        }
+        return null;
+    }
+
+    private async Task LoadCategories()
+    {
+        _categories = await MediaGalleryCategoryService.GetMediaGalleryCategoriesAsync(ModuleState.ModuleId);
+    }
+
+    private void AddCategory()
+    {
+        _activeCategory = new Models.MediaGalleryCategory
+        {
+            ModuleId = ModuleState.ModuleId,
+            IsActive = true
+        };
+    }
+
+    private void EditCategory(Models.MediaGalleryCategory category)
+    {
+        // Create a copy for editing
+        _activeCategory = new Models.MediaGalleryCategory
+        {
+            CategoryId = category.CategoryId,
+            ModuleId = category.ModuleId,
+            CategoryName = category.CategoryName,
+            Description = category.Description,
+            SortOrder = category.SortOrder,
+            IsActive = category.IsActive,
+            ParentCategoryId = category.ParentCategoryId,
+            ViewRoles = category.ViewRoles,
+            CreatedBy = category.CreatedBy,
+            CreatedOn = category.CreatedOn,
+            ModifiedBy = category.ModifiedBy,
+            ModifiedOn = category.ModifiedOn
+        };
+    }
+
+    private async Task SaveCategory()
+    {
+        try
+        {
+            if (_activeCategory.CategoryId == 0)
+            {
+                await MediaGalleryCategoryService.AddMediaGalleryCategoryAsync(_activeCategory);
+                await logger.LogInformation("Category Added {Category}", _activeCategory);
+            }
+            else
+            {
+                await MediaGalleryCategoryService.UpdateMediaGalleryCategoryAsync(_activeCategory);
+                await logger.LogInformation("Category Updated {Category}", _activeCategory);
+            }
+            await LoadCategories();
+            _activeCategory = null;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+
+            await logger.LogError(ex, "Error Saving Category {Error}", ex.Message);
+        }
+    }
+
+    private async Task DeleteCategory(Models.MediaGalleryCategory category)
+    {
+        try
+        {
+            await MediaGalleryCategoryService.DeleteMediaGalleryCategoryAsync(category.CategoryId, category.ModuleId);
+            await logger.LogInformation("Category Deleted {Category}", category);
+            await LoadCategories();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await logger.LogError(ex, "Error Deleting Category {Error}", ex.Message);
+        }
+    }
+
+    private async Task LoadItems()
+    {
+        _items = await MediaGalleryItemService.GetMediaGalleryItemsAsync(ModuleState.ModuleId);
+
+    }
+
+    private async Task DeleteItem(MediaGalleryItem item)
+    {
+        try
+        {
+            await MediaGalleryItemService.DeleteMediaGalleryItemAsync(item.ItemId, item.ModuleId);
+            await logger.LogInformation("Item Deleted {Item}", item);
+            await LoadItems();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await logger.LogError(ex, "Error Deleting Item {Error}", ex.Message);
+        }
+    }
+
+    private void AddItem()
+    {
+        _activeItem = new Models.MediaGalleryItem
+        {
+            ModuleId = ModuleState.ModuleId,
+            IsActive = true,
+            MediaType = "Image" // Default value
+        };
+    }
+
+    private void EditItem(Models.MediaGalleryItem item)
+    {
+        // Create a copy for editing
+        _activeItem = new Models.MediaGalleryItem
+        {
+            ItemId = item.ItemId,
+            ModuleId = item.ModuleId,
+            CategoryId = item.CategoryId,
+            Title = item.Title,
+            Description = item.Description,
+            MediaType = item.MediaType,
+            FileId = item.FileId,
+            FilePath = item.FilePath,
+            ThumbnailFileId = item.ThumbnailFileId,
+            ThumbnailPath = item.ThumbnailPath,
+            SortOrder = item.SortOrder,
+            IsActive = item.IsActive,
+            ViewCount = item.ViewCount,
+            CreatedBy = item.CreatedBy,
+            CreatedOn = item.CreatedOn,
+            ModifiedBy = item.ModifiedBy,
+            ModifiedOn = item.ModifiedOn
+        };
+    }
+
+    private async Task SaveItem()
+    {
+        try
+        {
+            if (_activeItem.ItemId == 0)
+            {
+                var newItem = await MediaGalleryItemService.AddMediaGalleryItemAsync(_activeItem);
+                await logger.LogInformation("Item Added {Item}", newItem);
+
+            }
+            else
+            {
+                await MediaGalleryItemService.UpdateMediaGalleryItemAsync(_activeItem);
+                await logger.LogInformation("Item Updated {Item}", _activeItem);
+            }
+            await LoadItems();
+            ApplyFilters();
+            _activeItem = null;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await logger.LogError(ex, "Error Saving Item {Error}", ex.Message);
+        }
+    }
+
+    private void CancelItem()
+    {
+        _activeItem = null;
+    }
+
+
+    private void Cancel()
+    {
+        _activeCategory = null;
+    }
+}

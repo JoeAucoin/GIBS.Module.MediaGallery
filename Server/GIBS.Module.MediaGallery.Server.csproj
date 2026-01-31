@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+    <Version>1.0.0</Version>
+    <Product>GIBS.Module.MediaGallery</Product>
+    <Authors>GIBS</Authors>
+    <Company>GIBS</Company>
+    <Description>Oqtane Media Gallery</Description>
+    <Copyright>GIBS</Copyright>
+    <AssemblyName>GIBS.Module.MediaGallery.Server.Oqtane</AssemblyName>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <StaticWebAssetsFingerprintContent>false</StaticWebAssetsFingerprintContent>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Remove="wwwroot\_content\**\*.*" />
+    <None Include="wwwroot\_content\**\*.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Localization" Version="10.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Client\GIBS.Module.MediaGallery.Client.csproj" />
+    <ProjectReference Include="..\Shared\GIBS.Module.MediaGallery.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Oqtane.Server"><HintPath>..\..\oqtane.framework\Oqtane.Server\bin\Debug\net10.0\Oqtane.Server.dll</HintPath></Reference>
+    <Reference Include="Oqtane.Shared"><HintPath>..\..\oqtane.framework\Oqtane.Server\bin\Debug\net10.0\Oqtane.Shared.dll</HintPath></Reference>
+    <Reference Include="SixLabors.ImageSharp">
+      <HintPath>..\..\oqtane.framework\Oqtane.Server\bin\Release\net10.0\SixLabors.ImageSharp.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
