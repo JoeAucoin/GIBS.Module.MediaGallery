@@ -150,7 +150,20 @@
                 <div class="row mb-1 align-items-center">
                     <Label Class="col-sm-3" For="item-tags" HelpText="Enter a comma-separated list of tags">Tags: </Label>
                     <div class="col-sm-9">
-                        <input id="item-tags" @bind="_activeItem.Tags" class="form-control" />
+                        <div style="position: relative;">
+                            <input id="item-tags" value="@_activeItem.Tags" @oninput="OnTagInput" class="form-control" autocomplete="off" />
+                            @if (_tagSuggestions != null && _tagSuggestions.Any())
+                            {
+                                <ul class="list-group" style="position: absolute; z-index: 1000; width: 100%;">
+                                    @foreach (var suggestion in _tagSuggestions)
+                                    {
+                                        <li class="list-group-item list-group-item-action" style="cursor: pointer;" @onclick="() => SelectTagSuggestion(suggestion)">
+                                            @suggestion
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                        </div>
                     </div>
                 </div>
 
@@ -244,7 +257,7 @@
             </div>
             <hr />
 
-            <Pager Items="@_items.OrderBy(i => i.CategoryName).ThenBy(i => i.SortOrder)">
+            <Pager Items="@_items.OrderBy(i => i.CategoryName).ThenBy(i => i.SortOrder)" SearchProperties="Title">
                 <Header>
                 <th style="width: 1px;">&nbsp;</th>
                 <th style="width: 1px;">&nbsp;</th>
@@ -300,6 +313,8 @@
     private string _selectedAlbum = "";
     private int _imageThumbWidth;
     private int _imageThumbHeight;
+    private int _imageMaxWidth; // Set your max width here
+    private int _imageMaxHeight; // Set your max height here
 
     private class FilterState
     {
@@ -334,6 +349,14 @@
             _folderId = int.Parse(SettingService.GetSetting(settings, "FileFolderId", "1"));
             _imageThumbWidth = int.Parse(SettingService.GetSetting(settings, "ImageThumbWidth", "360"));
             _imageThumbHeight = int.Parse(SettingService.GetSetting(settings, "ImageThumbHeight", "360"));
+            if (!int.TryParse(SettingService.GetSetting(ModuleState.Settings, "ImageMaxWidth", "1600"), out _imageMaxWidth))
+            {
+                _imageMaxWidth = 1600;
+            }
+            if (!int.TryParse(SettingService.GetSetting(ModuleState.Settings, "ImageMaxHeight", "900"), out _imageMaxHeight))
+            {
+                _imageMaxHeight = 900;
+            }
 
             await LoadCategories();
             await LoadItems();
@@ -393,14 +416,25 @@
         await LoadItems();
     }
 
-    private async void HandleFileUpload(int fileId)
+    private async Task HandleFileUpload(int fileId)
     {
 
         var uploadedFile = await FileService.GetFileAsync(fileId);
         if (uploadedFile != null)
         {
+            // Check to see if we need to resize the image
+            if (uploadedFile.ImageWidth > _imageMaxWidth || uploadedFile.ImageHeight > _imageMaxHeight)
+            {
+                var resized = await MediaGalleryItemService.ResizeImageAsync(uploadedFile.FileId, _imageMaxWidth, _imageMaxHeight, ModuleState.ModuleId);
+                if (resized == null)
+                {
+                    AddModuleMessage("There was an error resizing the image.", MessageType.Error);
+                    return;
+                }
 
-            //_newFileToRequest.DesignRequestId = _designRequest.DesignRequestId;
+                uploadedFile = await FileService.GetFileAsync(resized.FileId);
+            }
+
             _activeItem.FileId = uploadedFile.FileId;
             _activeItem.FilePath = uploadedFile.Url;
 
@@ -431,23 +465,14 @@
                 imageType = imageType.StartsWith(".") ? imageType[1..] : imageType; // Remove leading dot
                 _activeItem.MediaType = imageType.ToUpper();
 
-                // var newFileToRequest = await DesignRequestService.AddFileToRequestAsync(_newFileToRequest);
-                // if (_notifyProjectManagerOnUpload)
-                // {
-                //     await SendFileNotificationToProjectManagerAsync(newFileToRequest);
-                // }
-
-                // _newFileToRequest = new(); // Reset form
-                // await LoadFileData();
                 var myThumbnail = await MediaGalleryItemService.CreateImageThumbnailAsync(_activeItem.FileId, _imageThumbWidth, _imageThumbHeight, ModuleState.ModuleId);
                 _activeItem.ThumbnailPath = myThumbnail?.Url;
                 _activeItem.ThumbnailFileId = myThumbnail?.FileId ?? 0;
                 AddModuleMessage("File added successfully.", MessageType.Success);
 
-                //  await Save(); // Save to update ModifiedOn and ModifiedBy
-
-                // Switch to Files tab after insert/update
-                _activeTab = "Photos";
+               
+                // // Switch to Files tab after insert/update
+                // _activeTab = "Photos";
             }
             catch (Exception ex)
             {
@@ -637,6 +662,8 @@
     {
         try
         {
+            _activeItem.Tags = _activeItem.Tags?.Trim().TrimEnd(','); // Clean up tags
+            
             if (_activeItem.ItemId == 0)
             {
                 var newItem = await MediaGalleryItemService.AddMediaGalleryItemAsync(_activeItem);
@@ -650,6 +677,8 @@
                 await logger.LogInformation("Item Updated {Item}", _activeItem);
             }
 
+            
+
             await ProcessTags();
 
             await LoadItems();
@@ -661,6 +690,43 @@
         {
             await logger.LogError(ex, "Error Saving Item {Error}", ex.Message);
         }
+    }
+
+    private List<string> _tagSuggestions = new List<string>();
+
+    private void OnTagInput(ChangeEventArgs e)
+    {
+        _activeItem.Tags = e.Value.ToString();
+
+        var tagsParts = _activeItem.Tags.Split(new[] { ',' }, StringSplitOptions.None);
+        var currentTag = tagsParts.Last().Trim();
+
+        if (currentTag.Length >= 3)
+        {
+            // Get the list of tags already entered, excluding the one being typed.
+            var existingTags = tagsParts.Take(tagsParts.Length - 1).Select(t => t.Trim()).Where(t => !string.IsNullOrEmpty(t)).ToList();
+
+            _tagSuggestions = _tags.Select(t => t.TagName)
+                                   .Where(t => t.StartsWith(currentTag, StringComparison.OrdinalIgnoreCase) && !existingTags.Contains(t, StringComparer.OrdinalIgnoreCase))
+                                   .ToList();
+        }
+        else
+        {
+            _tagSuggestions.Clear();
+        }
+    }
+
+    private void SelectTagSuggestion(string suggestion)
+    {
+        var lastCommaIndex = _activeItem.Tags.LastIndexOf(',');
+        string baseTags = "";
+        if (lastCommaIndex != -1)
+        {
+            baseTags = _activeItem.Tags.Substring(0, lastCommaIndex + 1);
+        }
+
+        _activeItem.Tags = (baseTags + " " + suggestion).Trim() + ", ";
+        _tagSuggestions.Clear();
     }
 
     private async Task ProcessTags()

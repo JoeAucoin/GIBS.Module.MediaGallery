@@ -32,7 +32,7 @@ namespace GIBS.Module.MediaGallery.Repository
                         FileId = i.FileId,
                         FilePath = i.FilePath,
                         ThumbnailFileId = i.ThumbnailFileId,
-                        ThumbnailPath = i.ThumbnailPath,
+                        ThumbnailPath = i.ThumbnailPath ?? i.FilePath,
                         SortOrder = i.SortOrder,
                         IsActive = i.IsActive,
                         ViewCount = i.ViewCount,

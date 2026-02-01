@@ -20,6 +20,7 @@ namespace GIBS.Module.MediaGallery.Services
         Task<MediaGalleryItem> UpdateMediaGalleryItemAsync(MediaGalleryItem item);
         Task DeleteMediaGalleryItemAsync(int itemId, int ModuleId);
         Task<ThumbnailResponse> CreateImageThumbnailAsync(int fileId, int width, int height, int moduleId);
+        Task<ThumbnailResponse> ResizeImageAsync(int fileId, int width, int height, int moduleId);
     }
 
     public class MediaGalleryItemService : ServiceBase, IMediaGalleryItemService
@@ -79,6 +80,24 @@ namespace GIBS.Module.MediaGallery.Services
             {
                 // Log or handle exceptions as needed
                 Console.WriteLine($"Error creating thumbnail: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<ThumbnailResponse> ResizeImageAsync(int fileId, int width, int height, int moduleId)
+        {
+            var request = new ResizeRequest { FileId = fileId, Width = width, Height = height, ModuleId = moduleId };
+            var url = CreateAuthorizationPolicyUrl($"{Apiurl}/resize-image", EntityNames.Module, moduleId);
+
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync(url, request);
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadFromJsonAsync<ThumbnailResponse>();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error resizing image: {ex.Message}");
                 return null;
             }
         }

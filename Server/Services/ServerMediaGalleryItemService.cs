@@ -109,6 +109,13 @@ namespace GIBS.Module.MediaGallery.Services
         {
             if (_userPermissions.IsAuthorized(_accessor.HttpContext.User, _alias.SiteId, EntityNames.Module, ModuleId, PermissionNames.Edit))
             {
+                var item = _mediaGalleryItemRepository.GetMediaGalleryItem(itemId);
+                if (item != null)
+                {
+                    DeleteFileIfExists(item.FileId);
+                    DeleteFileIfExists(item.ThumbnailFileId.GetValueOrDefault());
+                }
+
                 _mediaGalleryItemRepository.DeleteMediaGalleryItem(itemId);
                 _logger.Log(LogLevel.Information, this, LogFunction.Delete, "MediaGalleryItem Deleted {ItemId}", itemId);
             }
@@ -117,6 +124,35 @@ namespace GIBS.Module.MediaGallery.Services
                 _logger.Log(LogLevel.Error, this, LogFunction.Security, "Unauthorized MediaGalleryItem Delete Attempt {ItemId} {ModuleId}", itemId, ModuleId);
             }
             return Task.CompletedTask;
+        }
+
+        private void DeleteFileIfExists(int fileId)
+        {
+            if (fileId <= 0)
+            {
+                return;
+            }
+
+            try
+            {
+                var file = _files.GetFile(fileId);
+                if (file == null)
+                {
+                    return;
+                }
+
+                var filePath = _files.GetFilePath(file);
+                if (!string.IsNullOrEmpty(filePath) && System.IO.File.Exists(filePath))
+                {
+                    System.IO.File.Delete(filePath);
+                }
+
+                _files.DeleteFile(fileId);
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(LogLevel.Error, this, LogFunction.Delete, ex, "Error deleting file {FileId}", fileId);
+            }
         }
 
         public async Task<ThumbnailResponse> CreateImageThumbnailAsync(int fileId, int width, int height, int moduleId)
@@ -187,6 +223,68 @@ namespace GIBS.Module.MediaGallery.Services
                     System.IO.File.Delete(thumbFilePath);
                 }
                 _logger.Log(LogLevel.Error, this, LogFunction.Create, ex, "Error Creating Thumbnail for FileId {FileId}", fileId);
+                return null;
+            }
+        }
+
+        public async Task<ThumbnailResponse> ResizeImageAsync(int fileId, int maxWidth, int maxHeight, int moduleId)
+        {
+            if (!_userPermissions.IsAuthorized(_accessor.HttpContext.User, _alias.SiteId, EntityNames.Module, moduleId, PermissionNames.Edit))
+            {
+                _logger.Log(LogLevel.Error, this, LogFunction.Security, "Unauthorized Image Resize Attempt for FileId {FileId}", fileId);
+                return null;
+            }
+
+            var originalFile = _files.GetFile(fileId);
+            if (originalFile == null)
+            {
+                _logger.Log(LogLevel.Error, this, LogFunction.Read, "File Not Found For Image Resize {FileId}", fileId);
+                return null;
+            }
+
+            string resizedFilePath = null;
+            try
+            {
+                var originalFilePath = _files.GetFilePath(originalFile);
+                if (System.IO.File.Exists(originalFilePath))
+                {
+                    var folderPath = System.IO.Path.GetDirectoryName(originalFilePath);
+                    var resizedFileName = $"{System.IO.Path.GetFileNameWithoutExtension(originalFile.Name)}_resized.{originalFile.Extension}";
+                    resizedFilePath = System.IO.Path.Combine(folderPath, resizedFileName);
+
+                    var resizedImagePath = _imageService.CreateImage(originalFilePath, maxWidth, maxHeight, "medium", "center", "white", "", originalFile.Extension, resizedFilePath);
+                    if (string.IsNullOrEmpty(resizedImagePath) || !System.IO.File.Exists(resizedImagePath))
+                    {
+                        throw new Exception("Image resizing failed. Resized file was not created.");
+                    }
+
+                    System.IO.File.Copy(resizedImagePath, originalFilePath, true);
+                    System.IO.File.Delete(resizedImagePath);
+
+                    var fileInfo = new System.IO.FileInfo(originalFilePath);
+                    using (var image = await SixLabors.ImageSharp.Image.LoadAsync(originalFilePath))
+                    {
+                        originalFile.ImageWidth = image.Width;
+                        originalFile.ImageHeight = image.Height;
+                    }
+
+                    originalFile.Size = (int)fileInfo.Length;
+                    _files.UpdateFile(originalFile);
+
+                    _logger.Log(LogLevel.Information, this, LogFunction.Update, "Image Resized Successfully for FileId {FileId}", fileId);
+                    return new ThumbnailResponse { FileId = originalFile.FileId, Url = originalFile.Url };
+                }
+
+                _logger.Log(LogLevel.Error, this, LogFunction.Read, "File Not Found For Image Resize {FileId}", fileId);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                if (!string.IsNullOrEmpty(resizedFilePath) && System.IO.File.Exists(resizedFilePath))
+                {
+                    System.IO.File.Delete(resizedFilePath);
+                }
+                _logger.Log(LogLevel.Error, this, LogFunction.Update, ex, "Error Resizing Image for FileId {FileId}", fileId);
                 return null;
             }
         }

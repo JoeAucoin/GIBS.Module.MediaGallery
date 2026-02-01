@@ -14,7 +14,7 @@ using Oqtane.Shared;
 
 namespace GIBS.Module.MediaGallery.Manager
 {
-    public class MediaGalleryManager : MigratableModuleBase, IInstallable, IPortable, ISearchable, IRoutable
+    public class MediaGalleryManager : MigratableModuleBase, IInstallable, IPortable, ISearchable
     {
         private readonly IMediaGalleryCategoryRepository _MediaGalleryCategoryRepository;
         private readonly IDBContextDependencies _DBContextDependencies;

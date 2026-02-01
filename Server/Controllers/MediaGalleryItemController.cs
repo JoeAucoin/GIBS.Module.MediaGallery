@@ -122,6 +122,27 @@ namespace GIBS.Module.MediaGallery.Controllers
         }
 
 
+        [HttpPost("resize-image")]
+        [Authorize(Policy = PolicyNames.EditModule)]
+        public async Task<ActionResult<ThumbnailResponse>> ResizeImageFile([FromBody] ResizeRequest request)
+        {
+            try
+            {
+                var result = await _mediaGalleryItemService.ResizeImageAsync(request.FileId, request.Width, request.Height, request.ModuleId);
+                if (result != null)
+                {
+                    return Ok(result);
+                }
+
+                return NotFound("Image resize failed. See server logs for details.");
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(LogLevel.Error, this, LogFunction.Update, ex, "Unhandled Error in ResizeImageFile Controller for FileId {FileId}", request.FileId);
+                return StatusCode(500, "An unhandled error occurred while resizing the image.");
+            }
+        }
+
         [HttpPost("resize-image-thumbnail")]
         [Authorize(Policy = PolicyNames.EditModule)]
         public async Task<ActionResult<ThumbnailResponse>> ResizeImage([FromBody] ResizeRequest request)

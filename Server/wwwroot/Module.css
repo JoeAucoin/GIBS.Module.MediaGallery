@@ -294,6 +294,7 @@
     aspect-ratio: 1;
     background: #e9ecef;
     border-radius: 4px;
+    z-index: 0;
 }
 
 .pw-photo-item a {

@@ -1,5 +1,7 @@
 @using GIBS.Module.MediaGallery.Services
 @using GIBS.Module.MediaGallery.Models
+@using System.Text.Json
+@using Microsoft.AspNetCore.Components
 
 @namespace GIBS.Module.MediaGallery
 @inherits ModuleBase
@@ -10,6 +12,8 @@
 @inject NavigationManager NavigationManager
 @inject ISettingService SettingService
 @inject IStringLocalizer<Index> Localizer
+
+
 
 @if (_categoryId == -1)
 {
@@ -27,16 +31,17 @@
         @if (_albums.Count != 0)
         {
            <div class="piwigo-gallery" id="piwigoGallery">
+           
             <div class="pw-albums-grid">
                 @foreach (var album in _albums)
                 {
                     <div class="pw-album-card" @onclick="async () => await ViewAlbum(album.CategoryId)">
                         <div class="pw-album-thumb">
-                            <img class="pw-album-img" src="@album.ThumbnailPath" alt="@album.CategoryName" />
+                                <img class="pw-album-img" src="@album.ThumbnailPath" alt="@album.CategoryName" loading="lazy" />
                             <div class="pw-album-overlay"></div>
                         </div>
                         <div class="pw-album-info">
-                            <h3 class="pw-album-title">@album.CategoryName</h3>
+                            <h1 class="pw-album-title">@album.CategoryName</h1>
                             <span class="pw-album-count">@album.ItemCount photos</span>
                         </div>
                     </div>
@@ -53,6 +58,7 @@
 else
 {
     <div class="container">
+        
         <div class="row">
             <div class="col-md-10">
                 <h3>@_selectedCategoryName</h3> 
@@ -94,22 +100,19 @@ else
             {
                 @foreach (var item in _items)
                 {
-
                     <div class="pw-photo-item" @onclick="() => OpenLightbox(item)">
-                        <img src="@item.FilePath" alt="@item.Title" class="pw-photo-img" loading="lazy" />
+                        <img src="@item.ThumbnailPath" alt="@item.Title - @item.CategoryName" class="pw-photo-img" loading="lazy" />
                         <div class="pw-item-overlay">
                             <div class="pw-item-info">
                                 @if (_showPhotoTitle)
                                 {
-                                    <h5 class="pw-item-title">@item.Title</h5>
+                                    <h2 class="pw-item-title">@item.Title</h2>
                                 }
 
                             </div>
                         </div>
                        
                     </div>
-                    
-
                 }
             }
         </div>
@@ -159,7 +162,7 @@ else
 
     public override List<Resource> Resources => new List<Resource>()
     {
-        new Resource { ResourceType = ResourceType.Stylesheet, Url = "_content/GIBS.Module.MediaGallery/Module.css?v=1.8" },
+        new Resource { ResourceType = ResourceType.Stylesheet, Url = "_content/GIBS.Module.MediaGallery/Module.css?v=1.9" },
        // new Resource { ResourceType = ResourceType.Script, Url = ModulePath() + "Module.js" }
     };
 
@@ -174,6 +177,7 @@ else
     private bool _showLightbox = false;
     private MediaGalleryItem _selectedItem;
     private bool _showPhotoTitle;
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -193,6 +197,7 @@ else
     private async Task LoadAlbums()
     {
         _albums = await MediaGalleryItemService.GetMediaGalleryAlbumsAsync(ModuleState.ModuleId);
+        
     }
 
     private async Task LoadTags()
@@ -247,6 +252,7 @@ else
 
         _items = new List<MediaGalleryItem>(_categoryItems);
         _selectedTag = null;
+        
     }
 
     private void FilterByTag(string tagName)
@@ -287,6 +293,7 @@ else
     {
         _categoryId = -1;
         _items = null;
+       
         StateHasChanged();
     }
 
@@ -323,4 +330,5 @@ else
             StateHasChanged();
         }
     }
+
 }
