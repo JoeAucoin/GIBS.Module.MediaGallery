@@ -10,18 +10,27 @@ using Oqtane.Enums;
 using Oqtane.Repository;
 using GIBS.Module.MediaGallery.Repository;
 using System.Threading.Tasks;
+using Oqtane.Shared;
 
 namespace GIBS.Module.MediaGallery.Manager
 {
-    public class MediaGalleryManager : MigratableModuleBase, IInstallable, IPortable, ISearchable
+    public class MediaGalleryManager : MigratableModuleBase, IInstallable, IPortable, ISearchable, IRoutable
     {
         private readonly IMediaGalleryCategoryRepository _MediaGalleryCategoryRepository;
         private readonly IDBContextDependencies _DBContextDependencies;
+        private IMediaGalleryItemRepository _mediaGalleryItems;
+        private ITagsRepository _tags;
+        private IItemTagsRepository _itemTags;
+        private ISqlRepository _sql;
 
-        public MediaGalleryManager(IMediaGalleryCategoryRepository MediaGalleryCategoryRepository, IDBContextDependencies DBContextDependencies)
+        public MediaGalleryManager(IMediaGalleryCategoryRepository MediaGalleryCategoryRepository, IDBContextDependencies DBContextDependencies, IMediaGalleryItemRepository mediaGalleryItems, ITagsRepository tags, IItemTagsRepository itemTags, ISqlRepository sql)
         {
             _MediaGalleryCategoryRepository = MediaGalleryCategoryRepository;
             _DBContextDependencies = DBContextDependencies;
+            _mediaGalleryItems = mediaGalleryItems;
+            _tags = tags;
+            _itemTags = itemTags;
+            _sql = sql;
         }
 
         public bool Install(Tenant tenant, string version)
@@ -82,6 +91,25 @@ namespace GIBS.Module.MediaGallery.Manager
            }
 
            return Task.FromResult(searchContentList);
+        }
+
+        public Dictionary<string, string> GetRoutes()
+        {
+            return new Dictionary<string, string>
+            {
+                { "album/{categoryid}", "{categoryid}" },
+                { "default", "" }
+            };
+        }
+
+        public string GetUrl(string route, Dictionary<string, string> parameters)
+        {
+            var url = "";
+            if (route == "album/{categoryid}")
+            {
+                url = "album/" + parameters["categoryid"];
+            }
+            return url;
         }
     }
 }
