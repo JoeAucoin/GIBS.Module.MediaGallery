@@ -59,5 +59,14 @@ namespace GIBS.Module.MediaGallery.Client.Resources.GIBS.Module.MediaGallery {
                 resourceCulture = value;
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Please complete all required fields..
+        /// </summary>
+        internal static string Message_SaveValidation {
+            get {
+                return ResourceManager.GetString("Message_SaveValidation", resourceCulture);
+            }
+        }
     }
 }

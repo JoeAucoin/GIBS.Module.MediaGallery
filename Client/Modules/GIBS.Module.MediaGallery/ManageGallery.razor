@@ -49,60 +49,62 @@
 
 @if (_activeCategory != null)
 {
-    <div class="container">
-        <div class="row mb-1 align-items-center">
-            <Label Class="col-sm-3" For="name" HelpText="Enter the category name" ResourceKey="CategoryName">Name: </Label>
-            <div class="col-sm-9">
-                <input id="name" @bind="_activeCategory.CategoryName" class="form-control" />
+    <form @ref="albumForm" class="@(albumValidated ? " was-validated" : "needs-validation")" novalidate>
+        <div class="container">
+            <div class="row mb-1 align-items-center">
+                <Label Class="col-sm-3" For="name" HelpText="Enter the category name" ResourceKey="CategoryName">Name: </Label>
+                <div class="col-sm-9">
+                    <input id="name" @bind="_activeCategory.CategoryName" class="form-control" required />
+                </div>
             </div>
-        </div>
-        <div class="row mb-1 align-items-center">
-            <Label Class="col-sm-3" For="description" HelpText="Enter a description for the category" ResourceKey="Description">Description: </Label>
-            <div class="col-sm-9">
-                <textarea id="description" @bind="_activeCategory.Description" class="form-control"></textarea>
+            <div class="row mb-1 align-items-center">
+                <Label Class="col-sm-3" For="description" HelpText="Enter a description for the category" ResourceKey="Description">Description: </Label>
+                <div class="col-sm-9">
+                    <textarea id="description" @bind="_activeCategory.Description" class="form-control"></textarea>
+                </div>
             </div>
-        </div>
-        <div class="row mb-1 align-items-center">
-            <Label Class="col-sm-3" For="sortorder" HelpText="Enter a sort order for the category" ResourceKey="SortOrder">Sort Order: </Label>
-            <div class="col-sm-9">
-                <input id="sortorder" type="number" @bind="_activeCategory.SortOrder" class="form-control" />
+            <div class="row mb-1 align-items-center">
+                <Label Class="col-sm-3" For="sortorder" HelpText="Enter a sort order for the category" ResourceKey="SortOrder">Sort Order: </Label>
+                <div class="col-sm-9">
+                    <input id="sortorder" type="number" @bind="_activeCategory.SortOrder" class="form-control" required />
+                </div>
             </div>
-        </div>
-        <div class="row mb-1 align-items-center">
-            <Label Class="col-sm-3" For="isactive" HelpText="Is this category active?" ResourceKey="IsActive">Is Active: </Label>
-            <div class="col-sm-9">
-                <input id="isactive" type="checkbox" @bind="_activeCategory.IsActive" class="form-check-input" />
+            <div class="row mb-1 align-items-center">
+                <Label Class="col-sm-3" For="isactive" HelpText="Is this category active?" ResourceKey="IsActive">Is Active: </Label>
+                <div class="col-sm-9">
+                    <input id="isactive" type="checkbox" @bind="_activeCategory.IsActive" class="form-check-input" />
+                </div>
             </div>
-        </div>
-        <div class="row mb-1 align-items-center">
-            <Label Class="col-sm-3" For="viewroles" HelpText="Comma separated list of roles that can view this category" ResourceKey="ViewRoles">View Roles: </Label>
-            <div class="col-sm-9">
-                <input id="viewroles" @bind="_activeCategory.ViewRoles" class="form-control" />
+            <div class="row mb-1 align-items-center">
+                <Label Class="col-sm-3" For="viewroles" HelpText="Comma separated list of roles that can view this category" ResourceKey="ViewRoles">View Roles: </Label>
+                <div class="col-sm-9">
+                    <input id="viewroles" @bind="_activeCategory.ViewRoles" class="form-control" />
+                </div>
             </div>
-        </div>
-        <div class="row mb-1 align-items-center">
-            <Label Class="col-sm-3" For="parent" HelpText="Select a parent category" ResourceKey="ParentCategoryId">Parent Category: </Label>
-            <div class="col-sm-9">
-                <select id="parent" @bind="_activeCategory.ParentCategoryId" class="form-control">
-                    <option value="">- None -</option>
-                    @if (_categories != null)
-                    {
-                        @foreach (var category in _categories.Where(c => c.CategoryId != _activeCategory.CategoryId))
+            <div class="row mb-1 align-items-center">
+                <Label Class="col-sm-3" For="parent" HelpText="Select a parent category" ResourceKey="ParentCategoryId">Parent Category: </Label>
+                <div class="col-sm-9">
+                    <select id="parent" @bind="_activeCategory.ParentCategoryId" class="form-control">
+                        <option value="">- None -</option>
+                        @if (_categories != null)
                         {
-                            <option value="@category.CategoryId">@category.CategoryName</option>
+                            @foreach (var category in _categories.Where(c => c.CategoryId != _activeCategory.CategoryId))
+                            {
+                                <option value="@category.CategoryId">@category.CategoryName</option>
+                            }
                         }
-                    }
-                </select>
+                    </select>
+                </div>
             </div>
         </div>
-    </div>
-    @if (_activeCategory.CategoryId != 0)
-    {
-        <br />
-        <AuditInfo CreatedBy="@_activeCategory.CreatedBy" CreatedOn="@_activeCategory.CreatedOn" ModifiedBy="@_activeCategory.ModifiedBy" ModifiedOn="@_activeCategory.ModifiedOn"></AuditInfo>
-    }
-    <button class="btn btn-success" @onclick="SaveCategory">Save</button>
-    <button class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+        @if (_activeCategory.CategoryId != 0)
+        {
+            <br />
+            <AuditInfo CreatedBy="@_activeCategory.CreatedBy" CreatedOn="@_activeCategory.CreatedOn" ModifiedBy="@_activeCategory.ModifiedBy" ModifiedOn="@_activeCategory.ModifiedOn"></AuditInfo>
+        }
+        <button class="btn btn-success" type="button" @onclick="SaveCategory">Save</button>
+        <button class="btn btn-secondary" type="button" @onclick="Cancel">Cancel</button>
+    </form>
 }
 
     </TabPanel>
@@ -118,109 +120,111 @@
         
         @if (_activeItem != null)
         {
-            <div class="container">
-                <div class="row mb-1 align-items-center">
-                    <Label Class="col-sm-3" For="item-category" HelpText="Select a category for the item">Category: </Label>
-                    <div class="col-sm-9">
-                        <select id="item-category" @bind="_activeItem.CategoryId" class="form-control">
-                            <option value="">- None -</option>
-                            @if (_categories != null)
-                            {
-                                @foreach (var category in _categories)
+            <form @ref="photoForm" class="@(photoValidated ? " was-validated" : "needs-validation")" novalidate>
+                <div class="container">
+                    <div class="row mb-1 align-items-center">
+                        <Label Class="col-sm-3" For="item-category" HelpText="Select a category for the item">Category: </Label>
+                        <div class="col-sm-9">
+                            <select id="item-category" @bind="_activeItem.CategoryId" class="form-control" required>
+                                <option value="">- None -</option>
+                                @if (_categories != null)
                                 {
-                                    <option value="@category.CategoryId">@category.CategoryName</option>
-                                }
-                            }
-                        </select>
-                    </div>
-                </div>
-                <div class="row mb-1 align-items-center">
-                    <Label Class="col-sm-3" For="item-title" HelpText="Enter the item title">Title: </Label>
-                    <div class="col-sm-9">
-                        <input id="item-title" @bind="_activeItem.Title" class="form-control" />
-                    </div>
-                </div>
-                <div class="row mb-1 align-items-center">
-                    <Label Class="col-sm-3" For="item-description" HelpText="Enter a description for the item">Description: </Label>
-                    <div class="col-sm-9">
-                        <textarea id="item-description" @bind="_activeItem.Description" class="form-control"></textarea>
-                    </div>
-                </div>
-
-                <div class="row mb-1 align-items-center">
-                    <Label Class="col-sm-3" For="item-tags" HelpText="Enter a comma-separated list of tags">Tags: </Label>
-                    <div class="col-sm-9">
-                        <div style="position: relative;">
-                            <input id="item-tags" value="@_activeItem.Tags" @oninput="OnTagInput" class="form-control" autocomplete="off" />
-                            @if (_tagSuggestions != null && _tagSuggestions.Any())
-                            {
-                                <ul class="list-group" style="position: absolute; z-index: 1000; width: 100%;">
-                                    @foreach (var suggestion in _tagSuggestions)
+                                    @foreach (var category in _categories)
                                     {
-                                        <li class="list-group-item list-group-item-action" style="cursor: pointer;" @onclick="() => SelectTagSuggestion(suggestion)">
-                                            @suggestion
-                                        </li>
+                                        <option value="@category.CategoryId">@category.CategoryName</option>
                                     }
-                                </ul>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-1 align-items-center">
+                        <Label Class="col-sm-3" For="item-title" HelpText="Enter the item title">Title: </Label>
+                        <div class="col-sm-9">
+                            <input id="item-title" @bind="_activeItem.Title" class="form-control" required />
+                        </div>
+                    </div>
+                    <div class="row mb-1 align-items-center">
+                        <Label Class="col-sm-3" For="item-description" HelpText="Enter a description for the item">Description: </Label>
+                        <div class="col-sm-9">
+                            <textarea id="item-description" @bind="_activeItem.Description" class="form-control"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="row mb-1 align-items-center">
+                        <Label Class="col-sm-3" For="item-tags" HelpText="Enter a comma-separated list of tags">Tags: </Label>
+                        <div class="col-sm-9">
+                            <div style="position: relative;">
+                                <input id="item-tags" value="@_activeItem.Tags" @oninput="OnTagInput" class="form-control" autocomplete="off" />
+                                @if (_tagSuggestions != null && _tagSuggestions.Any())
+                                {
+                                    <ul class="list-group" style="position: absolute; z-index: 1000; width: 100%;">
+                                        @foreach (var suggestion in _tagSuggestions)
+                                        {
+                                            <li class="list-group-item list-group-item-action" style="cursor: pointer;" @onclick="() => SelectTagSuggestion(suggestion)">
+                                                @suggestion
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-1 align-items-center">
+                        <Label Class="col-sm-3" For="item-mediatype" HelpText="Enter the media type (e.g., image, video)">Media Type: </Label>
+                        <div class="col-sm-9">
+                            <input id="item-mediatype" @bind="_activeItem.MediaType" class="form-control" required />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <Label Class="col-sm-3" For="upload">File:</Label>
+                        <div class="col-sm-9">
+                            <FileManager UploadMultiple="false" Filter="jpg,png,gif,jpeg,pdf"
+                                         FolderId="@_folderId"
+                                         ShowSuccess="true" ShowFolders="false" ShowFiles="false" ShowImage="false"
+                                         OnUpload="@HandleFileUpload" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-1 align-items-center">
+                        <Label Class="col-sm-3" For="item-filepath" HelpText="Enter the relative path to the file">File Path: </Label>
+                        <div class="col-sm-9">
+                            <input id="item-filepath" @bind="_activeItem.FilePath" class="form-control" required />
+                            @if (!string.IsNullOrEmpty(_activeItem.FilePath))
+                            {
+                                <img src="@_activeItem.FilePath" alt="Image preview" style="max-width: 280px; max-height: 200px; margin-top: 5px; margin-bottom: 10px;" />
                             }
                         </div>
                     </div>
-                </div>
-
-                <div class="row mb-1 align-items-center">
-                    <Label Class="col-sm-3" For="item-mediatype" HelpText="Enter the media type (e.g., image, video)">Media Type: </Label>
-                    <div class="col-sm-9">
-                        <input id="item-mediatype" @bind="_activeItem.MediaType" class="form-control" />
+                    <div class="row mb-1 align-items-center">
+                        <Label Class="col-sm-3" For="item-thumbnail" HelpText="Enter the relative path to the thumbnail (optional)">Thumbnail Path: </Label>
+                        <div class="col-sm-9">
+                            <input id="item-thumbnail" @bind="_activeItem.ThumbnailPath" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="row mb-1 align-items-center">
+                        <Label Class="col-sm-3" For="item-sortorder" HelpText="Enter a sort order for the item">Sort Order: </Label>
+                        <div class="col-sm-9">
+                            <input id="item-sortorder" type="number" @bind="_activeItem.SortOrder" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="row mb-1 align-items-center">
+                        <Label Class="col-sm-3" For="item-isactive" HelpText="Is this item active?">Is Active: </Label>
+                        <div class="col-sm-9">
+                            <input id="item-isactive" type="checkbox" @bind="_activeItem.IsActive" class="form-check-input" />
+                        </div>
                     </div>
                 </div>
-
-                <div class="row mb-3">
-                    <Label Class="col-sm-3" For="upload">File:</Label>
-                    <div class="col-sm-9">
-                        <FileManager UploadMultiple="false" Filter="jpg,png,gif,jpeg,pdf"
-                                     FolderId="@_folderId"
-                                     ShowSuccess="true" ShowFolders="false" ShowFiles="false" ShowImage="false"
-                                     OnUpload="@HandleFileUpload" />
-                    </div>
-                </div>
-
-                <div class="row mb-1 align-items-center">
-                    <Label Class="col-sm-3" For="item-filepath" HelpText="Enter the relative path to the file">File Path: </Label>
-                    <div class="col-sm-9">
-                        <input id="item-filepath" @bind="_activeItem.FilePath" class="form-control" />
-                        @if (!string.IsNullOrEmpty(_activeItem.FilePath))
-                        {
-                            <img src="@_activeItem.FilePath" alt="Image preview" style="max-width: 280px; max-height: 200px; margin-top: 5px; margin-bottom: 10px;" />
-                        }
-                    </div>
-                </div>
-                <div class="row mb-1 align-items-center">
-                    <Label Class="col-sm-3" For="item-thumbnail" HelpText="Enter the relative path to the thumbnail (optional)">Thumbnail Path: </Label>
-                    <div class="col-sm-9">
-                        <input id="item-thumbnail" @bind="_activeItem.ThumbnailPath" class="form-control" />
-                    </div>
-                </div>
-                <div class="row mb-1 align-items-center">
-                    <Label Class="col-sm-3" For="item-sortorder" HelpText="Enter a sort order for the item">Sort Order: </Label>
-                    <div class="col-sm-9">
-                        <input id="item-sortorder" type="number" @bind="_activeItem.SortOrder" class="form-control" />
-                    </div>
-                </div>
-                <div class="row mb-1 align-items-center">
-                    <Label Class="col-sm-3" For="item-isactive" HelpText="Is this item active?">Is Active: </Label>
-                    <div class="col-sm-9">
-                        <input id="item-isactive" type="checkbox" @bind="_activeItem.IsActive" class="form-check-input" />
-                    </div>
-                </div>
-            </div>
-            @if (_activeItem.ItemId != 0)
-            {
-                <br />
-                <AuditInfo CreatedBy="@_activeItem.CreatedBy" CreatedOn="@_activeItem.CreatedOn" ModifiedBy="@_activeItem.ModifiedBy" ModifiedOn="@_activeItem.ModifiedOn"></AuditInfo>
-            }
-            <button class="btn btn-success" @onclick="SaveItem">Save Photo</button>
-            <button class="btn btn-secondary" @onclick="CancelItem">Cancel</button>
-            <hr />
+                @if (_activeItem.ItemId != 0)
+                {
+                    <br />
+                    <AuditInfo CreatedBy="@_activeItem.CreatedBy" CreatedOn="@_activeItem.CreatedOn" ModifiedBy="@_activeItem.ModifiedBy" ModifiedOn="@_activeItem.ModifiedOn"></AuditInfo>
+                }
+                <button class="btn btn-success" type="button" @onclick="SaveItem">Save Photo</button>
+                <button class="btn btn-secondary" type="button" @onclick="CancelItem">Cancel</button>
+                <hr />
+            </form>
         }
 
 
@@ -240,7 +244,7 @@
                         {
                             @foreach (var CategoryName in _categories)
                             {
-                                <option value="@CategoryName.CategoryName">@CategoryName.CategoryName</option>
+                                <option value="@CategoryName.CategoryId">@CategoryName.CategoryName</option>
                             }
                         }
                     </select>
@@ -310,22 +314,26 @@
     private Models.MediaGalleryItem _activeItem;
     private string _activeTab = "Albums";
     private int _folderId = 1;
-    private string _selectedAlbum = "";
+    private int _selectedAlbum = 0;
     private int _imageThumbWidth;
     private int _imageThumbHeight;
     private int _imageMaxWidth; // Set your max width here
     private int _imageMaxHeight; // Set your max height here
+    private ElementReference photoForm;
+    private bool photoValidated;
+    private ElementReference albumForm;
+    private bool albumValidated;
 
     private class FilterState
     {
-        public string SelectedAlbum { get; set; }
+        public int SelectedAlbum { get; set; }
     }
     // Filter Persistence
     private string _storageKey => $"GIBS_MediaGallery_ManageGallery_{ModuleState.ModuleId}_FilterState";
     private bool FiltersActive =>
-        !string.IsNullOrEmpty(_selectedAlbum);
+        _selectedAlbum != 0;
 
-    private string SelectedAlbum
+    private int SelectedAlbum
     {
         get => _selectedAlbum;
         set
@@ -395,9 +403,9 @@
     {
         IEnumerable<Models.MediaGalleryItem> query = _items;
 
-        if (!string.IsNullOrEmpty(_selectedAlbum))
+        if (_selectedAlbum > 0)
         {
-            query = query.Where(r => r.CategoryName == _selectedAlbum);
+            query = query.Where(r => r.CategoryId == _selectedAlbum);
         }
 
         _items = query.ToList();
@@ -411,7 +419,7 @@
     private async Task ClearFilters()
     {
         // Use the properties to ensure filtering is re-applied
-        _selectedAlbum = "";
+        _selectedAlbum = 0;
         //ApplyFilters();
         await LoadItems();
     }
@@ -548,6 +556,14 @@
     {
         try
         {
+            albumValidated = true;
+            var interop = new Oqtane.UI.Interop(JSRuntime);
+            if (!await interop.FormValid(albumForm))
+            {
+                AddModuleMessage(Localizer["Message_SaveValidation"], MessageType.Warning);
+                return;
+            }
+
             if (_activeCategory.CategoryId == 0)
             {
                 await MediaGalleryCategoryService.AddMediaGalleryCategoryAsync(_activeCategory);
@@ -560,6 +576,7 @@
             }
             await LoadCategories();
             _activeCategory = null;
+            albumValidated = false;
             StateHasChanged();
         }
         catch (Exception ex)
@@ -630,6 +647,13 @@
             IsActive = true,
             MediaType = "Image" // Default value
         };
+        if (SelectedAlbum > 0)
+        {
+            _activeItem.CategoryId = SelectedAlbum;
+        }
+        _activeItem.SortOrder = (_items != null && _items.Any(i => i.CategoryId == _activeItem.CategoryId))
+            ? _items.Where(i => i.CategoryId == _activeItem.CategoryId).Max(i => i.SortOrder) + 10
+            : 10;
     }
 
     private void EditItem(Models.MediaGalleryItem item)
@@ -662,6 +686,14 @@
     {
         try
         {
+            photoValidated = true;
+            var interop = new Oqtane.UI.Interop(JSRuntime);
+            if (!await interop.FormValid(photoForm))
+            {
+                AddModuleMessage(Localizer["Message_SaveValidation"], MessageType.Warning);
+                return;
+            }
+
             _activeItem.Tags = _activeItem.Tags?.Trim().TrimEnd(','); // Clean up tags
             
             if (_activeItem.ItemId == 0)
@@ -677,13 +709,12 @@
                 await logger.LogInformation("Item Updated {Item}", _activeItem);
             }
 
-            
-
             await ProcessTags();
 
             await LoadItems();
             ApplyFilters();
             _activeItem = null;
+            photoValidated = false;
             StateHasChanged();
         }
         catch (Exception ex)
@@ -791,11 +822,13 @@
     private void CancelItem()
     {
         _activeItem = null;
+        photoValidated = false;
     }
 
 
     private void Cancel()
     {
         _activeCategory = null;
+        albumValidated = false;
     }
 }
