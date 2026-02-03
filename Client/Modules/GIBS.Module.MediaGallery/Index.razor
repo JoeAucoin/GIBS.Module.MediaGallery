@@ -66,6 +66,31 @@ else
             <div class="col-md-2 text-end"><button class="btn btn-secondary mb-3" @onclick="async () => await ShowAlbums()">Back to Albums</button></div>
         </div>
 
+        @if (_subAlbums != null && _subAlbums.Any())
+        {
+            <h3 class="pw-subalbums-title">📁 Sub-Albums</h3>
+            <div class="piwigo-gallery" id="piwigoSubGallery">
+                <div class="pw-albums-grid pw-subalbums-grid">
+                    @foreach (var album in _subAlbums)
+                    {
+                        <div class="pw-album-card pw-subalbum-card" @onclick="async () => await ViewAlbum(album.CategoryId)">
+                            <div class="pw-album-thumb">
+                                @if (!string.IsNullOrEmpty(album.ThumbnailPath))
+                                {
+                                    <img class="pw-album-img" src="@album.ThumbnailPath" alt="@album.CategoryName" loading="lazy" />
+                                }
+                                <div class="pw-album-overlay"></div>
+                            </div>
+                            <div class="pw-album-info">
+                                <h2 class="pw-album-title">@album.CategoryName</h2>
+                                <span class="pw-album-count">@album.ItemCount photos</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
         @if (_categoryId != -1 && _tagCounts != null && _tagCounts.Any())
         {
             <div class="container mt-1 mb-3 p-3" style="border: 1px solid #ddd; border-radius: 5px;">
@@ -90,7 +115,7 @@ else
             </div>
         }
 
-
+        <h3 class="pw-photos-title">🖼️ Photos in this Album</h3>
         <div class="pw-photos-grid" id="photosGrid">
             @if (_items == null)
             {
@@ -162,11 +187,12 @@ else
 
     public override List<Resource> Resources => new List<Resource>()
     {
-        new Resource { ResourceType = ResourceType.Stylesheet, Url = "_content/GIBS.Module.MediaGallery/Module.css?v=1.9" },
+        new Resource { ResourceType = ResourceType.Stylesheet, Url = "_content/GIBS.Module.MediaGallery/Module.css?v=1.13" },
        // new Resource { ResourceType = ResourceType.Script, Url = ModulePath() + "Module.js" }
     };
 
     private List<MediaGalleryAlbum> _albums;
+    private List<MediaGalleryAlbum> _subAlbums;
     private List<MediaGalleryItem> _items;
     private List<MediaGalleryItem> _categoryItems;
     private List<Models.Tags> _tags;
@@ -197,7 +223,10 @@ else
     private async Task LoadAlbums()
     {
         _albums = await MediaGalleryItemService.GetMediaGalleryAlbumsAsync(ModuleState.ModuleId);
-        
+        var categories = await MediaGalleryCategoryService.GetMediaGalleryCategoriesAsync(ModuleState.ModuleId);
+        var topLevelCategoryIds = categories.Where(c => c.ParentCategoryId == null).Select(c => c.CategoryId).ToHashSet();
+        _albums = _albums.Where(a => topLevelCategoryIds.Contains(a.CategoryId)).ToList();
+        _subAlbums = null;
     }
 
     private async Task LoadTags()
@@ -208,6 +237,8 @@ else
     private async Task LoadCategoryItems()
     {
         var allItems = await MediaGalleryItemService.GetMediaGalleryItemsAsync(ModuleState.ModuleId);
+        var categories = await MediaGalleryCategoryService.GetMediaGalleryCategoriesAsync(ModuleState.ModuleId);
+
         _categoryItems = allItems.Where(i => i.CategoryId == _categoryId).OrderBy(i => i.SortOrder).ToList();
         if (_categoryItems.Any())
         {
@@ -249,6 +280,22 @@ else
             _categoryItems = new List<MediaGalleryItem>();
             _tagCounts = new Dictionary<string, int>();
         }
+
+        var childCategories = categories.Where(c => c.ParentCategoryId == _categoryId && c.IsActive).ToList();
+        _subAlbums = childCategories
+            .Select(category =>
+            {
+                var items = allItems.Where(i => i.CategoryId == category.CategoryId).OrderBy(i => i.SortOrder).ThenBy(i => i.ItemId).ToList();
+                var firstItem = items.FirstOrDefault();
+                return new MediaGalleryAlbum
+                {
+                    CategoryId = category.CategoryId,
+                    CategoryName = category.CategoryName,
+                    ItemCount = items.Count,
+                    ThumbnailPath = firstItem?.ThumbnailPath ?? firstItem?.FilePath
+                };
+            })
+            .ToList();
 
         _items = new List<MediaGalleryItem>(_categoryItems);
         _selectedTag = null;
@@ -293,6 +340,7 @@ else
     {
         _categoryId = -1;
         _items = null;
+        _subAlbums = null;
        
         StateHasChanged();
     }

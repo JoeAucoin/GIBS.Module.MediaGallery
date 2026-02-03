@@ -207,17 +207,17 @@
     margin-bottom: 30px;
 }
 
-.pw-subalbum-card {
-    width: 160px;
-    height: 120px;
+.pw-album-card.pw-subalbum-card {
+    width: 280px !important;
+    height: 210px;
 }
 
 .pw-subalbum-card .pw-album-info {
-    padding: 6px 8px;
+    padding: 8px 10px;
 }
 
-.pw-subalbum-card .pw-album-name {
-    font-size: 12px;
+.pw-subalbum-card .pw-album-title {
+    font-size: 18px;
 }
 
 .pw-subalbum-card .pw-album-count {
@@ -853,8 +853,14 @@
         justify-content: center;
     }
     .pw-album-card {
-        width: 160px;
-        height: 120px;
+        width: 80% !important;
+        height: auto;
+        aspect-ratio: 4 / 3;
+    }
+    .pw-album-card.pw-subalbum-card {
+        width: 80% !important;
+        height: auto;
+        aspect-ratio: 4 / 3;
     }
     .pw-album-title {
         font-size: 12px;
@@ -886,8 +892,14 @@
 
 @media (max-width: 480px) {
     .pw-album-card {
-        width: calc(50% - 8px);
-        height: 100px;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 4 / 3;
+    }
+    .pw-album-card.pw-subalbum-card {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 4 / 3;
     }
     .pw-photos-grid {
         grid-template-columns: repeat(2, 1fr);

@@ -85,7 +85,7 @@
                 <Label Class="col-sm-3" For="parent" HelpText="Select a parent category" ResourceKey="ParentCategoryId">Parent Category: </Label>
                 <div class="col-sm-9">
                     <select id="parent" @bind="_activeCategory.ParentCategoryId" class="form-control">
-                        <option value="">- None -</option>
+                        
                         @if (_categories != null)
                         {
                             @foreach (var category in _categories.Where(c => c.CategoryId != _activeCategory.CategoryId))
@@ -126,7 +126,7 @@
                         <Label Class="col-sm-3" For="item-category" HelpText="Select a category for the item">Category: </Label>
                         <div class="col-sm-9">
                             <select id="item-category" @bind="_activeItem.CategoryId" class="form-control" required>
-                                <option value="">- None -</option>
+                                
                                 @if (_categories != null)
                                 {
                                     @foreach (var category in _categories)
@@ -278,7 +278,7 @@
                     <td class="text-center">
                         @if (!string.IsNullOrEmpty(context.FilePath))
                         {
-                            <img src="@context.FilePath" alt="@context.Title" class="img-thumbnail" />   
+                            <img src="@context.ThumbnailPath" alt="@context.Title" class="img-thumbnail" style="max-width: 120px; max-height: 100px; object-fit: cover;" />
                         }
                     </td>
                     <td>@context.Title</td>
@@ -650,6 +650,17 @@
         if (SelectedAlbum > 0)
         {
             _activeItem.CategoryId = SelectedAlbum;
+        }
+        _activeItem.SortOrder = (_items != null && _items.Any(i => i.CategoryId == _activeItem.CategoryId))
+            ? _items.Where(i => i.CategoryId == _activeItem.CategoryId).Max(i => i.SortOrder) + 10
+            : 10;
+    }
+
+    private void OnCategoryChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value.ToString(), out int selectedCategoryId))
+        {
+            _activeItem.CategoryId = selectedCategoryId;
         }
         _activeItem.SortOrder = (_items != null && _items.Any(i => i.CategoryId == _activeItem.CategoryId))
             ? _items.Where(i => i.CategoryId == _activeItem.CategoryId).Max(i => i.SortOrder) + 10
