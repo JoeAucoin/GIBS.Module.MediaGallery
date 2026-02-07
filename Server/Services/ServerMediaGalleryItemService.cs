@@ -248,11 +248,37 @@ namespace GIBS.Module.MediaGallery.Services
                 var originalFilePath = _files.GetFilePath(originalFile);
                 if (System.IO.File.Exists(originalFilePath))
                 {
+                    // Calculate dimensions while preserving aspect ratio
+                    int resizeWidth = originalFile.ImageWidth;
+                    int resizeHeight = originalFile.ImageHeight;
+                    
+                    if (originalFile.ImageWidth > 0 && originalFile.ImageHeight > 0)
+                    {
+                        double aspectRatio = (double)originalFile.ImageWidth / originalFile.ImageHeight;
+                        
+                        // Only resize if image exceeds max bounds
+                        if (originalFile.ImageWidth > maxWidth || originalFile.ImageHeight > maxHeight)
+                        {
+                            if (aspectRatio > (double)maxWidth / maxHeight)
+                            {
+                                // Width is the constraint
+                                resizeWidth = maxWidth;
+                                resizeHeight = (int)(maxWidth / aspectRatio);
+                            }
+                            else
+                            {
+                                // Height is the constraint
+                                resizeHeight = maxHeight;
+                                resizeWidth = (int)(maxHeight * aspectRatio);
+                            }
+                        }
+                    }
+
                     var folderPath = System.IO.Path.GetDirectoryName(originalFilePath);
                     var resizedFileName = $"{System.IO.Path.GetFileNameWithoutExtension(originalFile.Name)}_resized.{originalFile.Extension}";
                     resizedFilePath = System.IO.Path.Combine(folderPath, resizedFileName);
 
-                    var resizedImagePath = _imageService.CreateImage(originalFilePath, maxWidth, maxHeight, "medium", "center", "white", "", originalFile.Extension, resizedFilePath);
+                    var resizedImagePath = _imageService.CreateImage(originalFilePath, resizeWidth, resizeHeight, "medium", "center", "white", "", originalFile.Extension, resizedFilePath);
                     if (string.IsNullOrEmpty(resizedImagePath) || !System.IO.File.Exists(resizedImagePath))
                     {
                         throw new Exception("Image resizing failed. Resized file was not created.");

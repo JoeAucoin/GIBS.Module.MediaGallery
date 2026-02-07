@@ -35,7 +35,7 @@
 
     public override List<Resource> Resources => new List<Resource>()
     {
-        new Stylesheet("_content/GIBS.Module.MediaGallery/Module.css")
+        new Stylesheet(ModulePath() + "Module.css")
     };
 
     private ElementReference form;

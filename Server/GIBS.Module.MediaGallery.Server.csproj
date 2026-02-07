@@ -15,11 +15,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Remove="wwwroot\_content\**\*.*" />
-    <None Include="wwwroot\_content\**\*.*" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.2" />

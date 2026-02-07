@@ -80,7 +80,7 @@ namespace GIBS.Module.MediaGallery.Manager
                {
                    searchContentList.Add(new SearchContent
                    {
-                       EntityName = "GIBSMediaGallery",
+                       EntityName = "GIBSMediaGallery_Category",
                        EntityId = MediaGallery.CategoryId.ToString(),
                        Title = MediaGallery.CategoryName,
                        Body = MediaGallery.CategoryName,

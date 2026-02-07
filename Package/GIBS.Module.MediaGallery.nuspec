@@ -32,7 +32,7 @@
         <file src="..\Server\obj\Release\$targetframework$\staticwebassets\msbuild.build.$ProjectName$.props" target="build\$ProjectName$.props" />
         <file src="..\Server\obj\Release\$targetframework$\staticwebassets\msbuild.buildMultiTargeting.$ProjectName$.props" target="buildMultiTargeting\$ProjectName$.props" />
         <file src="..\Server\obj\Release\$targetframework$\staticwebassets\msbuild.buildTransitive.$ProjectName$.props" target="buildTransitive\$ProjectName$.props" />
-        <file src="..\Server\wwwroot\**\*.*" target="staticwebassets" />
+        <file src="..\Server\wwwroot\**\*.*" target="wwwroot\Modules\$ProjectName$" />
         <file src="icon.png" target="" />
     </files>
 </package>
