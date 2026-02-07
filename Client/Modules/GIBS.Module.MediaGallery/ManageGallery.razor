@@ -85,7 +85,7 @@
                 <Label Class="col-sm-3" For="parent" HelpText="Select a parent category" ResourceKey="ParentCategoryId">Parent Category: </Label>
                 <div class="col-sm-9">
                     <select id="parent" @bind="_activeCategory.ParentCategoryId" class="form-control">
-                        
+                                <option value="">-- None --</option>
                         @if (_categories != null)
                         {
                             @foreach (var category in _categories.Where(c => c.CategoryId != _activeCategory.CategoryId))
@@ -126,7 +126,7 @@
                         <Label Class="col-sm-3" For="item-category" HelpText="Select a category for the item">Category: </Label>
                         <div class="col-sm-9">
                             <select id="item-category" @bind="_activeItem.CategoryId" class="form-control" required>
-                                
+                                <option value="">-- Select Album --</option>
                                 @if (_categories != null)
                                 {
                                     @foreach (var category in _categories)
@@ -292,7 +292,7 @@
         }
     </TabPanel>
     <TabPanel Name="BulkUpload" Heading="Bulk Upload">
-
+        <h2>Coming Soon</h2>
     </TabPanel>
 
 </TabStrip>
